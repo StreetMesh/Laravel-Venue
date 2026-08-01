@@ -3,7 +3,6 @@
 namespace StreetMesh\Venue\Tests;
 
 use Flux\FluxServiceProvider;
-use Illuminate\Support\Facades\Blade;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use StreetMesh\Protocol\Laravel\ProtocolServiceProvider;
@@ -37,20 +36,11 @@ abstract class TestCase extends Orchestra
          *
          * This package ships screens written against the Livewire starter kit's
          * layout, which is the opinion the project settled on — so it cannot
-         * render one of its own screens without a host. That is a real contract
-         * rather than an oversight, and registering a stub the same way the
-         * starter kit registers the real thing is what makes it testable
-         * without pretending the dependency is not there.
+         * render one of its own screens without a host. Pointing the `layouts`
+         * namespace at a stub is what Livewire itself does with the real one on
+         * boot, so this stands in the same way rather than a different way.
          */
-    }
-
-    protected function getEnvironmentSetUp($app): void
-    {
-        parent::getEnvironmentSetUp($app);
-
-        $app->booted(function () {
-            Blade::anonymousComponentNamespace(__DIR__.'/fixtures/views/layouts', 'layouts');
-        });
+        $app['config']->set('livewire.component_namespaces.layouts', __DIR__.'/fixtures/views/layouts');
     }
 
     protected function defineDatabaseMigrations(): void

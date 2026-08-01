@@ -1,11 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use StreetMesh\Venue\Http\ExperiencesController;
 
 /*
- * One screen, at a name nothing else wants. Drawn by a controller rather than a
- * Livewire component until the mechanism for a package to ship one is settled —
- * see ExperiencesController.
+ * One screen, at a name nothing else wants, drawn by a Livewire component this
+ * package ships itself. It renders into the host's layout — the package decides
+ * what the screen is, the application decides what frames it.
  */
-Route::get('experiences', ExperiencesController::class)->name('venue.experiences');
+Route::livewire('experiences', 'venue::experiences')->name('venue.experiences');
