@@ -1,10 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use StreetMesh\Venue\Http\LobbyController;
+use StreetMesh\Venue\Http\ExperiencesController;
 
 /*
- * Nothing here claims the front page either. Both halves being unable to claim
- * it is what makes them installable together.
+ * One screen, at a name nothing else wants. The front page and the home page
+ * are the application's, because a server has one of each and may offer more
+ * than one capability.
  */
-Route::get('/', LobbyController::class)->name('venue.lobby');
+Route::get('experiences', ExperiencesController::class)->name('venue.experiences');

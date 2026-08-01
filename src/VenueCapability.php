@@ -3,13 +3,15 @@
 namespace StreetMesh\Venue;
 
 use StreetMesh\Protocol\Laravel\Capabilities\Capability;
+use StreetMesh\Protocol\Laravel\Capabilities\Widget;
 
 /**
  * This server is somewhere people gather.
  *
- * Nobody has an account here. Everyone arrives with a name issued somewhere
- * else, does something, and leaves with a record of it — which is why a venue
- * needs an identity of its own to sign with but no notion of a resident.
+ * It says so on the wire, offers something to greet strangers with, and offers
+ * a panel for a signed-in person's home page. It does not decide where any of
+ * that goes, because a server may offer more than one capability and only the
+ * application can arrange them.
  */
 final class VenueCapability implements Capability
 {
@@ -20,14 +22,20 @@ final class VenueCapability implements Capability
 
     public function serviceType(): string
     {
-        // No ATProtocol equivalent, because a place people visit to do things
-        // together is the part StreetMesh is adding rather than adopting.
         return 'StreetMeshVenue';
     }
 
-    public function home(): string
+    public function frontPage(): string
     {
-        return 'venue.lobby';
+        return 'venue::front';
+    }
+
+    /**
+     * @return array<int, Widget>
+     */
+    public function widgets(): array
+    {
+        return [new VenueWidget];
     }
 
     /**
@@ -36,7 +44,7 @@ final class VenueCapability implements Capability
     public function navigation(): array
     {
         return [
-            ['label' => 'Lobby', 'route' => 'venue.lobby', 'icon' => 'users'],
+            ['label' => 'Experiences', 'route' => 'venue.experiences'],
         ];
     }
 }

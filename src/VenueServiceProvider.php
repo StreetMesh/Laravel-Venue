@@ -13,9 +13,14 @@ class VenueServiceProvider extends ServiceProvider
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'venue');
 
+        /*
+         * At its own name, with no prefix. There is nothing here another
+         * capability would also want, so there is nothing to arrange — the two
+         * surfaces that overlap, the front page and the home page, belong to
+         * the application.
+         */
         $this->app['router']
             ->middleware('web')
-            ->prefix((string) config('streetmesh.mount.venue', ''))
             ->group(__DIR__.'/../routes/web.php');
     }
 }
