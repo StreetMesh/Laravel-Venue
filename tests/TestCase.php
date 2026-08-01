@@ -42,7 +42,15 @@ abstract class TestCase extends Orchestra
          * starter kit registers the real thing is what makes it testable
          * without pretending the dependency is not there.
          */
-        Blade::anonymousComponentNamespace(__DIR__.'/fixtures/views/layouts', 'layouts');
+    }
+
+    protected function getEnvironmentSetUp($app): void
+    {
+        parent::getEnvironmentSetUp($app);
+
+        $app->booted(function () {
+            Blade::anonymousComponentNamespace(__DIR__.'/fixtures/views/layouts', 'layouts');
+        });
     }
 
     protected function defineDatabaseMigrations(): void
