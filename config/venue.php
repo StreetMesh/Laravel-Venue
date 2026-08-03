@@ -24,4 +24,21 @@ return [
 
     'scopes' => [],
 
+    /*
+     |--------------------------------------------------------------------------
+     | Where the realtime half is
+     |--------------------------------------------------------------------------
+     |
+     | The address a browser opens a websocket to. Sent to the browser with its
+     | ticket rather than written into a page, so that moving the realtime half
+     | is an operator's decision rather than an edit to somebody's experience
+     | templates.
+     |
+     | Null means this venue hosts nothing live, which is a perfectly good venue
+     | — a shop needs no room.
+     |
+     */
+
+    'hub' => env('STREETMESH_HUB'),
+
 ];

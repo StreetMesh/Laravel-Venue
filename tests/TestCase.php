@@ -46,5 +46,9 @@ abstract class TestCase extends Orchestra
     protected function defineDatabaseMigrations(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../vendor/streetmesh/protocol-laravel/database/migrations');
+
+        // This package's own, which hold what a venue remembers about what is
+        // happening here.
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
     }
 }

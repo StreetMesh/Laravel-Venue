@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use StreetMesh\Venue\Http\TicketController;
 use StreetMesh\Venue\Http\VisitController;
 
 /*
@@ -35,3 +36,15 @@ Route::post('leave', [VisitController::class, 'leave'])->name('venue.leave');
 Route::livewire('experiences', 'venue::experiences')
     ->middleware('visitor')
     ->name('venue.experiences');
+
+/*
+ * A way in to something happening here.
+ *
+ * Behind the door, because a ticket names a visitor and there is no visitor to
+ * name until somebody has arrived. What it hands back is checked by the hub
+ * against the venue's signature, so this endpoint decides and the hub only
+ * verifies.
+ */
+Route::post('gatherings/{key}/ticket', TicketController::class)
+    ->middleware('visitor')
+    ->name('venue.ticket');

@@ -18,11 +18,14 @@ class VenueServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/venue.php', 'streetmesh.venue');
 
         $this->app->singleton(Visitors::class);
+        $this->app->singleton(Gatherings\Gatherings::class);
     }
 
     public function boot(): void
     {
         $this->app->make(Capabilities::class)->register(new VenueCapability);
+
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'venue');
 
