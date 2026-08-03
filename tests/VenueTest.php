@@ -3,6 +3,9 @@
 namespace StreetMesh\Venue\Tests;
 
 use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
+use StreetMesh\Protocol\Laravel\Permissions\Delegation;
+use StreetMesh\Protocol\P256;
+use StreetMesh\Venue\Visitors;
 
 class VenueTest extends TestCase
 {
@@ -61,6 +64,8 @@ class VenueTest extends TestCase
 
     public function test_its_own_screen_is_at_its_own_name(): void
     {
+        $this->seated();
+
         $this->get('/experiences')
             ->assertOk()
             ->assertSee('No experiences installed yet');
@@ -81,6 +86,123 @@ class VenueTest extends TestCase
             $this->app->make('livewire.finder')->resolveSingleFileComponentPath('venue::experiences')
         );
 
+        $this->seated();
+
         $this->get('/experiences')->assertSee('wire:model.live="filter"', escape: false);
+    }
+
+    /**
+     * A menu of things to do is only useful to somebody who can do them, and
+     * everything here is done on somebody else's behalf.
+     */
+    public function test_the_menu_is_behind_the_door(): void
+    {
+        $this->get('/experiences')->assertRedirect(route('venue.visit'));
+    }
+
+    /**
+     * Being asked to identify yourself and then dumped at the entrance is the
+     * small rudeness that makes a federated arrival feel worse than a local
+     * sign-in.
+     */
+    public function test_where_somebody_was_heading_survives_being_sent_home_to_be_asked(): void
+    {
+        $this->get('/experiences');
+
+        $this->assertSame(url('/experiences'), session(Visitors::INTENDED_KEY));
+    }
+
+    public function test_the_door_asks_for_an_address_and_offers_no_account(): void
+    {
+        $this->get('/visit')
+            ->assertOk()
+            ->assertSee('Your address')
+            ->assertSee('There is nothing to sign up for here.')
+            ->assertDontSee('Password');
+    }
+
+    public function test_arriving_with_nothing_typed_says_so(): void
+    {
+        $this->post('/visit', ['handle' => '  '])->assertSessionHasErrors('handle');
+    }
+
+    /**
+     * A name that resolves to nothing is almost always a typo, and should read
+     * as one rather than as whatever the discovery chain threw.
+     */
+    public function test_an_address_that_answers_to_nobody_is_reported_as_an_address(): void
+    {
+        $this->post('/visit', ['handle' => 'nobody.example'])
+            ->assertSessionHasErrors('handle');
+
+        $this->assertStringContainsString(
+            'nobody.example',
+            (string) session('errors')?->first('handle'),
+        );
+    }
+
+    /**
+     * A callback nobody asked for is somebody else's business, and must not
+     * seat them.
+     */
+    public function test_an_answer_to_a_question_nobody_asked_seats_nobody(): void
+    {
+        $this->get('/visit/callback?state=made-up&code=made-up')
+            ->assertRedirect(route('venue.visit'));
+
+        $this->assertNull(session(Visitors::SESSION_KEY));
+    }
+
+    public function test_a_refusal_is_reported_rather_than_left_silent(): void
+    {
+        $this->get('/visit/callback?error=access_denied')
+            ->assertRedirect(route('venue.visit'))
+            ->assertSessionHasErrors('handle');
+    }
+
+    /**
+     * Leaving forgets the visit and keeps the permission, which is not the same
+     * as withdrawing it — taking it back is done at their own server, because
+     * that is the only place it can be done in a way that survives this venue
+     * disagreeing.
+     */
+    public function test_leaving_forgets_the_visit_here_and_nothing_else(): void
+    {
+        $delegation = $this->seated();
+
+        $this->post('/leave')->assertRedirect(route('venue.visit'));
+
+        $this->assertNull(session(Visitors::SESSION_KEY));
+        $this->assertNotNull($delegation->fresh(), 'the permission itself is theirs to withdraw, not ours');
+    }
+
+    /**
+     * Somebody is here, and the page says who without this venue holding an
+     * account for them.
+     */
+    public function test_a_seated_visitor_is_named_by_where_they_came_from(): void
+    {
+        $this->seated();
+
+        $this->get('/experiences')
+            ->assertSee('alice.home.test')
+            ->assertSee('Nothing about you is kept here.');
+    }
+
+    private function seated(): Delegation
+    {
+        $delegation = Delegation::create([
+            'did' => 'did:web:alice.home.test',
+            'handle' => 'alice.home.test',
+            'issuer' => 'https://home.test',
+            'dpop_key' => Delegation::store(P256::generate()),
+            'access_token' => 'a-live-token',
+            'scope' => 'atproto',
+            'expires_at' => now()->addMinutes(15),
+        ]);
+
+        session([Visitors::SESSION_KEY => $delegation->id]);
+
+        return $delegation;
     }
 }

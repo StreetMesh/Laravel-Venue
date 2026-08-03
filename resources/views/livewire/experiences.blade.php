@@ -2,6 +2,8 @@
 
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use StreetMesh\Protocol\Laravel\Permissions\Delegation;
+use StreetMesh\Venue\Visitors;
 
 new #[Title('Experiences')] class extends Component
 {
@@ -13,6 +15,11 @@ new #[Title('Experiences')] class extends Component
     public function experiences(): array
     {
         return [];
+    }
+
+    public function visitor(): ?Delegation
+    {
+        return app(Visitors::class)->current(request());
     }
 };?>
 
@@ -26,6 +33,28 @@ new #[Title('Experiences')] class extends Component
             <flux:select.option value="open">{{ __('Open now') }}</flux:select.option>
         </flux:select>
     </div>
+
+    @if ($this->visitor() !== null)
+        {{--
+            Who is here, and how to stop being here.
+
+            Their name comes from the permission their own server gave us rather
+            than from anything this venue holds — which is why leaving is a
+            button rather than an account to delete.
+        --}}
+        <flux:callout icon="user">
+            <flux:callout.heading>{{ $this->visitor()->handle }}</flux:callout.heading>
+            <flux:callout.text>
+                {{ __('Visiting from :server.', ['server' => parse_url($this->visitor()->issuer, PHP_URL_HOST)]) }}
+                {{ __('Nothing about you is kept here.') }}
+            </flux:callout.text>
+
+            <form method="POST" action="{{ route('venue.leave') }}" class="mt-3">
+                @csrf
+                <flux:button type="submit" size="sm" variant="ghost">{{ __('Leave') }}</flux:button>
+            </form>
+        </flux:callout>
+    @endif
 
     @forelse ($this->experiences() as $experience)
         <flux:card>{{ $experience }}</flux:card>

@@ -8,6 +8,18 @@ use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 
 class VenueServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        /*
+         * Merged under the protocol's own key rather than a second root, so an
+         * operator configuring a server reads one file rather than one per
+         * package installed.
+         */
+        $this->mergeConfigFrom(__DIR__.'/../config/venue.php', 'streetmesh.venue');
+
+        $this->app->singleton(Visitors::class);
+    }
+
     public function boot(): void
     {
         $this->app->make(Capabilities::class)->register(new VenueCapability);
@@ -26,6 +38,14 @@ class VenueServiceProvider extends ServiceProvider
          * has to install is a problem nobody needs.
          */
         Livewire::addNamespace('venue', viewPath: __DIR__.'/../resources/views/livewire');
+
+        /*
+         * "Is somebody here", which is not the same question as "is somebody
+         * signed in". A venue has no accounts, so the framework's own guards
+         * have nothing to check — what this asks is whether this browser is
+         * acting under permission somebody's own server gave us.
+         */
+        $this->app['router']->aliasMiddleware('visitor', Http\RequireVisitor::class);
 
         /*
          * At its own name, with no prefix. There is nothing here another
