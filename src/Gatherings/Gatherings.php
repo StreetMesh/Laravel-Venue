@@ -46,12 +46,19 @@ final class Gatherings
             throw new RuntimeException('That is over.');
         }
 
-        $existing = Seat::query()
-            ->where('gathering_id', $gathering->id)
-            ->where('delegation_id', $visitor->id)
-            ->first();
+        $existing = $this->seatOf($gathering, $visitor);
 
         if ($existing !== null) {
+            /*
+             * Point the chair at the permission we can actually use. Coming
+             * back through the door mints a fresh delegation, and the one they
+             * sat down with may since have expired — settling against it would
+             * fail at the last step, after the game was already over.
+             */
+            if ($existing->delegation_id !== $visitor->id) {
+                $existing->update(['delegation_id' => $visitor->id]);
+            }
+
             return $existing;
         }
 
@@ -84,13 +91,9 @@ final class Gatherings
      */
     public function admit(Gathering $gathering, Delegation $visitor): string
     {
-        $seat = Seat::query()
-            ->where('gathering_id', $gathering->id)
-            ->where('delegation_id', $visitor->id)
-            ->whereNull('left_at')
-            ->first();
+        $seat = $this->seatOf($gathering, $visitor);
 
-        if ($seat === null) {
+        if ($seat === null || $seat->left_at !== null) {
             throw new RuntimeException('That visitor has no place there.');
         }
 
@@ -99,6 +102,24 @@ final class Gatherings
         }
 
         return $this->tickets->mint($visitor, $gathering->room(), $seat->seat);
+    }
+
+    /**
+     * Where somebody is sitting, if they are.
+     *
+     * Found by *who they are* rather than by which permission they are holding.
+     * A delegation is one trip through the door: come back tomorrow, or in
+     * another browser, and the same person is carrying a different one. Keyed
+     * on the delegation, this venue sat one person down twice — a game showed
+     * "2 at the table" with nobody else in the building, and the second chair
+     * was the same human returning.
+     */
+    public function seatOf(Gathering $gathering, Delegation $visitor): ?Seat
+    {
+        return Seat::query()
+            ->where('gathering_id', $gathering->id)
+            ->whereHas('delegation', fn ($holder) => $holder->where('did', $visitor->did))
+            ->first();
     }
 
     public function conclude(Gathering $gathering): Gathering

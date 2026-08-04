@@ -37,6 +37,54 @@ class GatheringTest extends TestCase
         ]);
     }
 
+    /**
+     * A delegation is one trip through the door, not a person.
+     *
+     * Coming back — tomorrow, or in another browser — mints a fresh one for the
+     * same human. Keyed on the delegation, this venue sat one person down twice
+     * and reported "2 at the table" with nobody else in the building. The
+     * second chair was the first person returning, and they went on to play
+     * themselves while a real visitor was put in the audience.
+     */
+    public function test_somebody_coming_back_returns_to_their_own_chair(): void
+    {
+        $gathering = $this->gatherings()->open('com.streetmesh.games.chess');
+        $alice = $this->visitor();
+
+        $first = $this->gatherings()->seat($gathering, $alice, 'white');
+
+        // The same person, a second time through the door.
+        $again = $this->visitor();
+
+        $this->assertNotSame($alice->id, $again->id);
+        $this->assertSame($alice->did, $again->did);
+
+        $second = $this->gatherings()->seat($gathering, $again, 'black');
+
+        $this->assertSame($first->id, $second->id, 'one person, one chair');
+        $this->assertSame('white', $second->seat, 'and it is the chair they were already in');
+        $this->assertSame(1, $gathering->seats()->count());
+    }
+
+    /**
+     * The chair follows them to the permission they are actually holding.
+     *
+     * The one they sat down with may have expired while they were away, and
+     * settling against it would fail at the last step — after the game was over
+     * and there was nothing to be done about it.
+     */
+    public function test_the_chair_takes_up_the_permission_they_came_back_with(): void
+    {
+        $gathering = $this->gatherings()->open('com.streetmesh.games.chess');
+
+        $this->gatherings()->seat($gathering, $this->visitor(), 'white');
+
+        $again = $this->visitor();
+        $seat = $this->gatherings()->seat($gathering, $again, 'white');
+
+        $this->assertSame($again->id, $seat->delegation_id);
+    }
+
     public function test_a_gathering_is_named_by_its_experience_and_which_one(): void
     {
         $gathering = $this->gatherings()->open(self::CHESS);
