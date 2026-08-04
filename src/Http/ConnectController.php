@@ -80,7 +80,7 @@ final class ConnectController
              * door wondering whether it worked.
              */
             return redirect()->route('venue.connect')->withErrors([
-                'handle' => __('Your server did not give permission, so nothing was shared.'),
+                'handle' => __('Your server did not give permission.'),
             ]);
         }
 
