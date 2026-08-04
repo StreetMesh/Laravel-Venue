@@ -43,7 +43,7 @@ new #[Title('Arrive')] class extends Component
             :value="old('handle')"
             autofocus
             autocomplete="username"
-            :description="__("We'll send you there to log in.")"
+            :description="__('We\'ll send you there to log in.')"
         />
 
         @error('handle')

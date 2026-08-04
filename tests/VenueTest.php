@@ -138,7 +138,17 @@ class VenueTest extends TestCase
             ->assertOk()
             ->assertSee('Your StreetMesh Address')
             ->assertSee('There is nothing to sign up for here.')
-            ->assertDontSee('Password');
+            ->assertSee('Authorize')
+            ->assertDontSee('Password')
+
+            /*
+             * A Flux tag reaching the browser as text means Blade could not
+             * parse the attribute before it and gave up — swallowing the rest
+             * of the form, including its submit button. Nested double quotes
+             * in an attribute did exactly that, and every other assertion here
+             * still passed while the form had no way to be sent.
+             */
+            ->assertDontSee('<flux:', escape: false);
     }
 
     public function test_arriving_with_nothing_typed_says_so(): void
