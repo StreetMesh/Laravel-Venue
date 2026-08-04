@@ -2,6 +2,7 @@
 
 namespace StreetMesh\Venue\Tests;
 
+use Illuminate\Http\Request;
 use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Protocol\Laravel\Permissions\Delegation;
 use StreetMesh\Protocol\P256;
@@ -187,6 +188,45 @@ class VenueTest extends TestCase
         $this->get('/experiences')
             ->assertSee('alice.home.test')
             ->assertSee('Nothing about you is kept here.');
+    }
+
+    /**
+     * The sequence that broke it, kept as a test rather than a memory.
+     *
+     * Being sent to the door remembers where somebody was heading. When that
+     * key was a dot-notation child of the seating key, writing it replaced the
+     * delegation id with an array — unseating whoever was here, and then
+     * failing several requests later with a type error from inside Eloquent,
+     * nowhere near the cause.
+     */
+    public function test_being_sent_to_the_door_does_not_unseat_whoever_is_here(): void
+    {
+        $delegation = $this->seated();
+
+        // A guarded page somebody is entitled to, so the middleware lets them
+        // through and does not write an intended URL.
+        $this->get('/experiences')->assertOk();
+
+        // And one that does write it, on a session that is already seated.
+        session([Visitors::INTENDED_KEY => url('/chess')]);
+
+        $this->assertSame($delegation->id, session(Visitors::SESSION_KEY));
+
+        $this->get('/experiences')->assertOk();
+    }
+
+    /**
+     * A session holding something unexpected means nobody is here, which is
+     * what it should say rather than what Eloquent says about arrays.
+     */
+    public function test_a_session_holding_nonsense_seats_nobody(): void
+    {
+        $request = Request::create('/experiences');
+        $request->setLaravelSession($this->app['session.store']);
+
+        $request->session()->put(Visitors::SESSION_KEY, ['intended' => 'https://example.test']);
+
+        $this->assertNull($this->app->make(Visitors::class)->current($request));
     }
 
     private function seated(): Delegation

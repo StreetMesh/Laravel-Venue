@@ -24,8 +24,15 @@ final class Visitors
 
     /**
      * Where they were heading before they were sent home to be asked.
+     *
+     * A sibling of the key above rather than a child of it, and that is not
+     * cosmetic. Laravel's session reads dots as nesting, so when this was
+     * `streetmesh.visitor.intended` writing it turned `streetmesh.visitor` from
+     * a delegation id into `['intended' => …]` — silently unseating whoever was
+     * here, and then failing with a type error from `find()` several requests
+     * later, nowhere near the cause.
      */
-    public const INTENDED_KEY = 'streetmesh.visitor.intended';
+    public const INTENDED_KEY = 'streetmesh.intended';
 
     public function seat(Request $request, Delegation $delegation): void
     {
@@ -42,7 +49,16 @@ final class Visitors
     {
         $id = $request->session()->get(self::SESSION_KEY);
 
-        return $id === null ? null : Delegation::query()->find($id);
+        /*
+         * Anything but a single id means nobody is here. `find()` given an
+         * array quietly returns a collection instead of a model, so a session
+         * holding something unexpected surfaces as a type error from deep
+         * inside Eloquent rather than as "you are not seated" — which is what
+         * it actually means.
+         */
+        return is_int($id) || is_string($id)
+            ? Delegation::query()->find($id)
+            : null;
     }
 
     /**
