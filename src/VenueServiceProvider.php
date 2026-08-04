@@ -67,5 +67,6 @@ class VenueServiceProvider extends ServiceProvider
         $this->app['router']
             ->middleware('web')
             ->group(__DIR__.'/../routes/web.php');
+
     }
 }

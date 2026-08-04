@@ -2,9 +2,10 @@
 
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use StreetMesh\Venue\Http\VisitController;
+use StreetMesh\Protocol\Laravel\Identity\Identities;
+use StreetMesh\Venue\Http\ConnectController;
 
-new #[Title('Arrive')] class extends Component
+new #[Title('Connect')] class extends Component
 {
     public string $handle = '';
 
@@ -13,7 +14,29 @@ new #[Title('Arrive')] class extends Component
      */
     public function asking(): array
     {
-        return VisitController::asking();
+        return ConnectController::asking();
+    }
+
+    /**
+     * The address of whoever is signed in here, or none.
+     *
+     * A server can be both a domicile and a venue, and when it is, the person
+     * at this form usually already lives here — asking them to type an address
+     * this server issued them is asking a question we can answer. It stays a
+     * text field, though, because living here is no reason to be unable to
+     * arrive as somebody else.
+     *
+     * Empty on a venue-only server, where nobody is ever signed in.
+     */
+    public function mine(): string
+    {
+        $user = auth()->user();
+
+        if ($user === null) {
+            return '';
+        }
+
+        return (string) (app(Identities::class)->forUser($user)?->handle ?? '');
     }
 };?>
 
@@ -24,7 +47,7 @@ new #[Title('Arrive')] class extends Component
 --}}
 <div class="mx-auto flex w-full max-w-sm flex-col gap-6 py-10">
     <div class="flex flex-col gap-2 text-center">
-        <flux:heading size="xl">{{ __('Arrive') }}</flux:heading>
+        <flux:heading size="xl">{{ __('Connect') }}</flux:heading>
         <flux:text>{{ __('There is nothing to sign up for here.') }}</flux:text>
     </div>
 
@@ -33,14 +56,14 @@ new #[Title('Arrive')] class extends Component
         next is a redirect to somebody else's server. Livewire would have to be
         told to do that, and a form already knows how.
     --}}
-    <form method="POST" action="{{ route('venue.visit.start') }}" class="flex flex-col gap-4">
+    <form method="POST" action="{{ route('venue.connect.start') }}" class="flex flex-col gap-4">
         @csrf
 
         <flux:input
             name="handle"
             :label="__('Your StreetMesh Address')"
             placeholder="alice.example.com"
-            :value="old('handle')"
+            :value="old('handle', $this->mine())"
             autofocus
             autocomplete="username"
             :description="__('We\'ll send you there to log in.')"

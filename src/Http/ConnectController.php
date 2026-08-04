@@ -22,7 +22,7 @@ use Throwable;
  * There is no account to create and no password to invent, which is the whole
  * point rather than a convenience.
  */
-final class VisitController
+final class ConnectController
 {
     public function __construct(
         private readonly Delegations $delegations,
@@ -79,7 +79,7 @@ final class VisitController
              * A refusal is an answer. Saying so beats leaving somebody at a
              * door wondering whether it worked.
              */
-            return redirect()->route('venue.visit')->withErrors([
+            return redirect()->route('venue.connect')->withErrors([
                 'handle' => __('Your server did not give permission, so nothing was shared.'),
             ]);
         }
@@ -93,7 +93,7 @@ final class VisitController
         } catch (Throwable $failed) {
             report($failed);
 
-            return redirect()->route('venue.visit')->withErrors([
+            return redirect()->route('venue.connect')->withErrors([
                 'handle' => __('That answer could not be used. Please try arriving again.'),
             ]);
         }
@@ -109,7 +109,7 @@ final class VisitController
     {
         $this->visitors->leave($request);
 
-        return redirect()->route('venue.visit');
+        return redirect()->route('venue.connect');
     }
 
     /**

@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use StreetMesh\Venue\Http\ConnectController;
 use StreetMesh\Venue\Http\TicketController;
-use StreetMesh\Venue\Http\VisitController;
 
 /*
  * The door.
@@ -11,19 +11,21 @@ use StreetMesh\Venue\Http\VisitController;
  * nothing to confirm by email. There is a text field for a name issued
  * somewhere else, a trip to that server to be asked, and a way back.
  */
-Route::livewire('visit', 'venue::visit')->name('venue.visit');
+Route::livewire('connect', 'venue::connect')->name('venue.connect');
 
-Route::post('visit', [VisitController::class, 'start'])->name('venue.visit.start');
+Route::post('connect', [ConnectController::class, 'start'])->name('venue.connect.start');
 
 /*
- * Where their own server sends them back to. Named in the client metadata
- * document this server publishes, which is why it cannot be changed without
- * that document changing too — a redirect a venue has not published is one a
- * domicile will refuse to use.
+ * Where their own server sends them back to.
+ *
+ * Its *name* is what the client metadata document publishes, looked up when
+ * that document is served — so this path can be moved and the two cannot
+ * disagree. They could once, and a redirect a venue has not published is one a
+ * domicile refuses, with the refusal arriving from somebody else's server.
  */
-Route::get('visit/callback', [VisitController::class, 'callback'])->name('venue.callback');
+Route::get('connect/callback', [ConnectController::class, 'callback'])->name('venue.callback');
 
-Route::post('leave', [VisitController::class, 'leave'])->name('venue.leave');
+Route::post('leave', [ConnectController::class, 'leave'])->name('venue.leave');
 
 /*
  * One screen, at a name nothing else wants, drawn by a Livewire component this

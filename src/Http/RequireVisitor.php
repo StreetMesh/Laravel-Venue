@@ -29,6 +29,6 @@ final class RequireVisitor
 
         $request->session()->put(Visitors::INTENDED_KEY, $request->fullUrl());
 
-        return redirect()->route('venue.visit');
+        return redirect()->route('venue.connect');
     }
 }

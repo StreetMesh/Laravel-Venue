@@ -3,11 +3,14 @@
 namespace StreetMesh\Venue\Tests;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
+use StreetMesh\Protocol\Laravel\Identity\Identities;
 use StreetMesh\Protocol\Laravel\Permissions\Delegation;
 use StreetMesh\Protocol\P256;
 use StreetMesh\Venue\Experiences\Experience;
 use StreetMesh\Venue\Experiences\Experiences;
+use StreetMesh\Venue\Tests\Fixtures\Resident;
 use StreetMesh\Venue\Visitors;
 
 class VenueTest extends TestCase
@@ -115,7 +118,7 @@ class VenueTest extends TestCase
     {
         config()->set('streetmesh.venue.gallery', 'visitors');
 
-        $this->get('/experiences')->assertRedirect(route('venue.visit'));
+        $this->get('/experiences')->assertRedirect(route('venue.connect'));
     }
 
     /**
@@ -134,7 +137,7 @@ class VenueTest extends TestCase
 
     public function test_the_door_asks_for_an_address_and_offers_no_account(): void
     {
-        $this->get('/visit')
+        $this->get('/connect')
             ->assertOk()
             ->assertSee('Your StreetMesh Address')
             ->assertSee('There is nothing to sign up for here.')
@@ -151,9 +154,52 @@ class VenueTest extends TestCase
             ->assertDontSee('<flux:', escape: false);
     }
 
+    public function test_somebody_who_lives_here_is_not_asked_to_type_their_own_address(): void
+    {
+        $resident = Resident::create([
+            'name' => 'Alice',
+            'email' => 'alice@games.test',
+            'password' => 'irrelevant',
+        ]);
+
+        $identity = app(Identities::class)->forResident('alice.games.test')['identity'];
+        $identity->owner()->associate($resident)->save();
+
+        $this->actingAs($resident)
+            ->get('/connect')
+            ->assertOk()
+            ->assertSee('value="alice.games.test"', escape: false);
+    }
+
+    public function test_a_stranger_is_asked_for_an_address_with_nothing_filled_in(): void
+    {
+        $this->get('/connect')
+            ->assertOk()
+            ->assertSee('value=""', escape: false);
+    }
+
+    public function test_the_published_redirect_is_the_route_that_receives_it(): void
+    {
+        /*
+         * A domicile refuses an authorization request whose redirect is not one
+         * the venue's client metadata document lists, and the refusal arrives
+         * from somebody else's server — where it reads as their fault. These
+         * were two written-down strings in two packages, so renaming this route
+         * would have broken every authorization silently.
+         */
+        // Everything in this document is fetched by strangers, so the protocol
+        // refuses to publish anything that is not https.
+        URL::forceScheme('https');
+
+        $document = $this->get('/client-metadata.json')->assertOk()->json();
+
+        $this->assertSame([route('venue.callback')], $document['redirect_uris']);
+        $this->assertStringEndsWith('/connect/callback', $document['redirect_uris'][0]);
+    }
+
     public function test_arriving_with_nothing_typed_says_so(): void
     {
-        $this->post('/visit', ['handle' => '  '])->assertSessionHasErrors('handle');
+        $this->post('/connect', ['handle' => '  '])->assertSessionHasErrors('handle');
     }
 
     /**
@@ -162,7 +208,7 @@ class VenueTest extends TestCase
      */
     public function test_an_address_that_answers_to_nobody_is_reported_as_an_address(): void
     {
-        $this->post('/visit', ['handle' => 'nobody.example'])
+        $this->post('/connect', ['handle' => 'nobody.example'])
             ->assertSessionHasErrors('handle');
 
         $this->assertStringContainsString(
@@ -177,16 +223,16 @@ class VenueTest extends TestCase
      */
     public function test_an_answer_to_a_question_nobody_asked_seats_nobody(): void
     {
-        $this->get('/visit/callback?state=made-up&code=made-up')
-            ->assertRedirect(route('venue.visit'));
+        $this->get('/connect/callback?state=made-up&code=made-up')
+            ->assertRedirect(route('venue.connect'));
 
         $this->assertNull(session(Visitors::SESSION_KEY));
     }
 
     public function test_a_refusal_is_reported_rather_than_left_silent(): void
     {
-        $this->get('/visit/callback?error=access_denied')
-            ->assertRedirect(route('venue.visit'))
+        $this->get('/connect/callback?error=access_denied')
+            ->assertRedirect(route('venue.connect'))
             ->assertSessionHasErrors('handle');
     }
 
@@ -200,7 +246,7 @@ class VenueTest extends TestCase
     {
         $delegation = $this->seated();
 
-        $this->post('/leave')->assertRedirect(route('venue.visit'));
+        $this->post('/leave')->assertRedirect(route('venue.connect'));
 
         $this->assertNull(session(Visitors::SESSION_KEY));
         $this->assertNotNull($delegation->fresh(), 'the permission itself is theirs to withdraw, not ours');

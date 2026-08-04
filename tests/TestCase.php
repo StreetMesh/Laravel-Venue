@@ -45,6 +45,10 @@ abstract class TestCase extends Orchestra
 
     protected function defineDatabaseMigrations(): void
     {
+        // A venue has no users of its own. These are here because a server can
+        // be a domicile too, and one screen behaves differently when it is.
+        $this->loadLaravelMigrations();
+
         $this->loadMigrationsFrom(__DIR__.'/../vendor/streetmesh/protocol-laravel/database/migrations');
 
         // This package's own, which hold what a venue remembers about what is

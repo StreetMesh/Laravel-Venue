@@ -161,7 +161,7 @@ class GatheringTest extends TestCase
     {
         $gathering = $this->gatherings()->open(self::CHESS);
 
-        $this->post(route('venue.ticket', $gathering->key))->assertRedirect(route('venue.visit'));
+        $this->post(route('venue.ticket', $gathering->key))->assertRedirect(route('venue.connect'));
     }
 
     /**
