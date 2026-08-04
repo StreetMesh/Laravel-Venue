@@ -24,6 +24,17 @@ use Throwable;
  */
 final class ConnectController
 {
+    /**
+     * Where anything that went wrong at the door is reported.
+     *
+     * Deliberately not `handle`, which is the name of the field. Keyed on the
+     * field, Flux drew the message under the input *and* the form drew it again
+     * in a callout — the same sentence twice, six lines apart. This is one
+     * screen with one field, so a refusal is about the attempt rather than
+     * about the box, and it is said once.
+     */
+    public const REFUSAL = 'connect';
+
     public function __construct(
         private readonly Delegations $delegations,
         private readonly Visitors $visitors,
@@ -35,7 +46,7 @@ final class ConnectController
         $handle = strtolower(ltrim(trim((string) $request->input('handle')), '@'));
 
         if ($handle === '') {
-            throw ValidationException::withMessages(['handle' => __('Type the address you use.')]);
+            throw ValidationException::withMessages([self::REFUSAL => __('Type the address you use.')]);
         }
 
         try {
@@ -62,7 +73,7 @@ final class ConnectController
             report($failed);
 
             throw ValidationException::withMessages([
-                'handle' => __('Nothing at :handle answers as a StreetMesh address.', ['handle' => $handle]),
+                self::REFUSAL => __('Nothing at :handle answers as a StreetMesh address.', ['handle' => $handle]),
             ]);
         }
 
@@ -80,7 +91,7 @@ final class ConnectController
              * door wondering whether it worked.
              */
             return redirect()->route('venue.connect')->withErrors([
-                'handle' => __('Your server did not give permission.'),
+                self::REFUSAL => __('Your server did not give permission.'),
             ]);
         }
 
@@ -94,7 +105,7 @@ final class ConnectController
             report($failed);
 
             return redirect()->route('venue.connect')->withErrors([
-                'handle' => __('That answer could not be used. Please try arriving again.'),
+                self::REFUSAL => __('That answer could not be used. Please try arriving again.'),
             ]);
         }
 

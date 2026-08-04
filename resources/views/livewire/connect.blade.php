@@ -69,7 +69,7 @@ new #[Title('Connect')] class extends Component
             :description="__('We\'ll send you there to log in.')"
         />
 
-        @error('handle')
+        @error(ConnectController::REFUSAL)
             <flux:callout variant="danger" icon="exclamation-triangle">
                 <flux:callout.text>{{ $message }}</flux:callout.text>
             </flux:callout>

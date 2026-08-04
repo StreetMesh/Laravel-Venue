@@ -10,6 +10,7 @@ use StreetMesh\Protocol\Laravel\Permissions\Delegation;
 use StreetMesh\Protocol\P256;
 use StreetMesh\Venue\Experiences\Experience;
 use StreetMesh\Venue\Experiences\Experiences;
+use StreetMesh\Venue\Http\ConnectController;
 use StreetMesh\Venue\Tests\Fixtures\Resident;
 use StreetMesh\Venue\Visitors;
 
@@ -199,7 +200,28 @@ class VenueTest extends TestCase
 
     public function test_arriving_with_nothing_typed_says_so(): void
     {
-        $this->post('/connect', ['handle' => '  '])->assertSessionHasErrors('handle');
+        $this->post('/connect', ['handle' => '  '])->assertSessionHasErrors(ConnectController::REFUSAL);
+    }
+
+    /**
+     * Once, not twice.
+     *
+     * Keyed on the field name, Flux drew the refusal under the input and the
+     * form drew it again in a callout — the same sentence, six lines apart.
+     * Both were correct on their own, which is why neither looked wrong until
+     * somebody saw the screen.
+     */
+    public function test_a_refusal_is_said_once(): void
+    {
+        $this->from('/connect')->post('/connect', ['handle' => '  ']);
+
+        $page = (string) $this->get('/connect')->assertOk()->getContent();
+
+        $this->assertSame(
+            1,
+            substr_count((string) $page, 'Type the address you use.'),
+            'the same refusal in two places reads as two problems',
+        );
     }
 
     /**
@@ -209,11 +231,11 @@ class VenueTest extends TestCase
     public function test_an_address_that_answers_to_nobody_is_reported_as_an_address(): void
     {
         $this->post('/connect', ['handle' => 'nobody.example'])
-            ->assertSessionHasErrors('handle');
+            ->assertSessionHasErrors(ConnectController::REFUSAL);
 
         $this->assertStringContainsString(
             'nobody.example',
-            (string) session('errors')?->first('handle'),
+            (string) session('errors')?->first(ConnectController::REFUSAL),
         );
     }
 
@@ -233,7 +255,7 @@ class VenueTest extends TestCase
     {
         $this->get('/connect/callback?error=access_denied')
             ->assertRedirect(route('venue.connect'))
-            ->assertSessionHasErrors('handle');
+            ->assertSessionHasErrors(ConnectController::REFUSAL);
     }
 
     /**
