@@ -70,8 +70,28 @@ final class Visitors
      * A venue that could revoke on their behalf would be a venue they had to
      * trust to do it.
      */
+    /**
+     * Give the permission back, and stop being here.
+     *
+     * Both, and in that order, because only one of them was ever happening.
+     * This used to forget the session and nothing else: the delegation stayed
+     * live, and this venue kept an access token and a refresh token it could
+     * have gone on writing to somebody's repository with. A visitor who
+     * pressed it had ended their visit and revoked nothing.
+     *
+     * Deleted rather than marked, because there is nothing here worth keeping.
+     * The venue's claim on somebody else's server is the whole of what this
+     * row is; a withdrawn one is not a record, it is a loaded gun with a note
+     * on it.
+     *
+     * Their own server is the authority on this and has its own copy — see
+     * Permissions::withdraw. What happens here is this venue giving up its end,
+     * which it can do unilaterally and should.
+     */
     public function leave(Request $request): void
     {
+        $this->current($request)?->delete();
+
         $request->session()->forget(self::SESSION_KEY);
         $request->session()->regenerate();
     }

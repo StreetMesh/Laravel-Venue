@@ -259,32 +259,56 @@ class VenueTest extends TestCase
     }
 
     /**
-     * Leaving forgets the visit and keeps the permission, which is not the same
-     * as withdrawing it — taking it back is done at their own server, because
-     * that is the only place it can be done in a way that survives this venue
-     * disagreeing.
+     * Two things were being conflated, and only one of them was happening.
+     *
+     * The authoritative record of a permission lives at their own server, and
+     * only they can withdraw it there — that much was right, and is why this
+     * cannot promise the grant is gone everywhere.
+     *
+     * What does not follow is that this venue should keep its copy. The token
+     * and refresh token are ours; discarding them is entirely within our power
+     * and is the honest answer to somebody saying they are done. It used to
+     * forget the session and keep both, so pressing the button ended the visit
+     * and revoked nothing, while this venue went on holding everything it
+     * needed to write to their repository.
      */
-    public function test_leaving_forgets_the_visit_here_and_nothing_else(): void
+    public function test_leaving_gives_up_the_permission_rather_than_only_the_session(): void
     {
         $delegation = $this->seated();
 
         $this->post('/leave')->assertRedirect(route('venue.connect'));
 
         $this->assertNull(session(Visitors::SESSION_KEY));
-        $this->assertNotNull($delegation->fresh(), 'the permission itself is theirs to withdraw, not ours');
+        $this->assertNull(
+            $delegation->fresh(),
+            'this venue must not go on holding a token somebody has finished with',
+        );
     }
 
     /**
-     * Somebody is here, and the page says who without this venue holding an
-     * account for them.
+     * Who is here is answerable, and is answered once.
+     *
+     * The menu of experiences used to carry a card naming the visitor, which
+     * on a server that is both a domicile and a venue put the same person on
+     * screen twice — an account in the sidebar and a permission in the body,
+     * competing for the same question. It belongs wherever the host already
+     * shows who somebody is.
+     *
+     * So this asserts what the package still owes: the answer is available to
+     * whoever is drawing the chrome, and the menu itself does not draw a second
+     * one. Restoring the card would put the duplication back.
      */
-    public function test_a_seated_visitor_is_named_by_where_they_came_from(): void
+    public function test_who_is_visiting_is_answerable_without_the_menu_saying_it(): void
     {
-        $this->seated();
+        $delegation = $this->seated();
 
         $this->get('/experiences')
-            ->assertSee('alice.home.test')
-            ->assertSee('Nothing about you is kept here.');
+            ->assertOk()
+            ->assertDontSee('alice.home.test');
+
+        // Still seated, and still answerable — the menu simply is not the one
+        // answering.
+        $this->assertSame($delegation->id, session(Visitors::SESSION_KEY));
     }
 
     /**
