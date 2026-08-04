@@ -136,7 +136,7 @@ class VenueTest extends TestCase
     {
         $this->get('/visit')
             ->assertOk()
-            ->assertSee('Your address')
+            ->assertSee('Your StreetMesh Address')
             ->assertSee('There is nothing to sign up for here.')
             ->assertDontSee('Password');
     }

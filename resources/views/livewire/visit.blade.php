@@ -38,12 +38,12 @@ new #[Title('Arrive')] class extends Component
 
         <flux:input
             name="handle"
-            :label="__('Your address')"
+            :label="__('Your StreetMesh Address')"
             placeholder="alice.example.com"
             :value="old('handle')"
             autofocus
             autocomplete="username"
-            :description="__('Wherever you already live. You will be sent there to be asked.')"
+            :description="__("We'll send you there to log in.")"
         />
 
         @error('handle')
@@ -53,7 +53,7 @@ new #[Title('Arrive')] class extends Component
         @enderror
 
         <flux:button type="submit" variant="primary" class="w-full">
-            {{ __('Continue to your server') }}
+            {{ __('Authorize') }}
         </flux:button>
     </form>
 
