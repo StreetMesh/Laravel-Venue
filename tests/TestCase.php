@@ -6,6 +6,7 @@ use Flux\FluxServiceProvider;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use StreetMesh\Protocol\Laravel\ProtocolServiceProvider;
+use StreetMesh\Protocol\Network;
 use StreetMesh\Venue\VenueServiceProvider;
 
 abstract class TestCase extends Orchestra
@@ -27,6 +28,16 @@ abstract class TestCase extends Orchestra
 
     protected function defineEnvironment($app): void
     {
+
+        /*
+         * Nothing here talks to the outside world.
+         *
+         * A default rather than something each test opts into, because the
+         * tests that reach the network by accident are exactly the ones that
+         * did not think they would. A test wanting particular answers binds its
+         * own.
+         */
+        $app->instance(Network::class, new OfflineNetwork);
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
         $app['config']->set('database.default', 'testing');
         $app['config']->set('streetmesh.host', 'games.test');
