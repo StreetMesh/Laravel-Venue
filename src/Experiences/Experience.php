@@ -43,6 +43,15 @@ interface Experience
     public function route(): string;
 
     /**
+     * What the button into it says, or null for the venue's own word.
+     *
+     * "Launch" fits most things and fits nothing well. An experience knows
+     * whether people play it, watch it, browse it or bid at it, and a menu
+     * reads better when each entry says what it actually is.
+     */
+    public function action(): ?string;
+
+    /**
      * What a visitor has to agree to before this can do its job.
      *
      * Declared here rather than configured, so that installing an experience

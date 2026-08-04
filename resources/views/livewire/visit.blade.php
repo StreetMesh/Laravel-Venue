@@ -17,7 +17,12 @@ new #[Title('Arrive')] class extends Component
     }
 };?>
 
-<div class="flex w-full flex-col gap-6">
+{{--
+    Constrained to the same width as the login form, because this is the same
+    kind of screen: one field, one decision, nothing to scan. A form that spans
+    a whole page reads as though it wanted more from you than an address.
+--}}
+<div class="mx-auto flex w-full max-w-sm flex-col gap-6 py-10">
     <div class="flex flex-col gap-2 text-center">
         <flux:heading size="xl">{{ __('Arrive') }}</flux:heading>
         <flux:text>{{ __('There is nothing to sign up for here.') }}</flux:text>

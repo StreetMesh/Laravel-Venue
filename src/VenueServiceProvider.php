@@ -52,6 +52,13 @@ class VenueServiceProvider extends ServiceProvider
         $this->app['router']->aliasMiddleware('visitor', Http\RequireVisitor::class);
 
         /*
+         * Whether the menu is anybody's business, asked per request rather than
+         * when routes are registered — a setting consulted at boot gets baked
+         * into a cached route table and appears to do nothing.
+         */
+        $this->app['router']->aliasMiddleware('venue.menu', Http\GuardTheMenu::class);
+
+        /*
          * At its own name, with no prefix. There is nothing here another
          * capability would also want, so there is nothing to arrange — the two
          * surfaces that overlap, the front page and the home page, belong to

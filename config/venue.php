@@ -41,4 +41,26 @@ return [
 
     'hub' => env('STREETMESH_HUB'),
 
+    /*
+     |--------------------------------------------------------------------------
+     | Who may see what is on
+     |--------------------------------------------------------------------------
+     |
+     | `anybody` — the menu is public. Somebody can look at what this venue
+     | offers before deciding whether to hand over a name, which is how a venue
+     | works in the world: a chess club posts its programme on the door.
+     |
+     | `visitors` — nothing is shown until somebody has arrived. For a venue
+     | that is private about what it hosts, or whose menu is only meaningful to
+     | people who are already members of something.
+     |
+     | Either way the experiences themselves are still behind the door. Seeing
+     | that chess is on offer is not the same as sitting down at a table, and
+     | somebody who clicks through from a public menu is sent to arrive and then
+     | brought back to where they were going.
+     |
+     */
+
+    'gallery' => env('STREETMESH_VENUE_GALLERY', 'anybody'),
+
 ];

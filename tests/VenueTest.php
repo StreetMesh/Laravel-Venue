@@ -99,11 +99,22 @@ class VenueTest extends TestCase
     }
 
     /**
-     * A menu of things to do is only useful to somebody who can do them, and
-     * everything here is done on somebody else's behalf.
+     * A menu is a thing venues put where people can read it.
      */
-    public function test_the_menu_is_behind_the_door(): void
+    public function test_anybody_may_read_the_menu_by_default(): void
     {
+        $this->get('/experiences')
+            ->assertOk()
+            ->assertSee('What there is to do here.');
+    }
+
+    /**
+     * And a venue that would rather not say what it hosts can keep it shut.
+     */
+    public function test_a_venue_can_put_the_menu_behind_the_door(): void
+    {
+        config()->set('streetmesh.venue.gallery', 'visitors');
+
         $this->get('/experiences')->assertRedirect(route('venue.visit'));
     }
 
@@ -114,6 +125,8 @@ class VenueTest extends TestCase
      */
     public function test_where_somebody_was_heading_survives_being_sent_home_to_be_asked(): void
     {
+        config()->set('streetmesh.venue.gallery', 'visitors');
+
         $this->get('/experiences');
 
         $this->assertSame(url('/experiences'), session(Visitors::INTENDED_KEY));
@@ -268,6 +281,11 @@ class VenueTest extends TestCase
                 return 'venue.experiences';
             }
 
+            public function action(): ?string
+            {
+                return null;
+            }
+
             /**
              * @return array<int, string>
              */
@@ -324,6 +342,11 @@ class VenueTest extends TestCase
             public function route(): string
             {
                 return 'venue.experiences';
+            }
+
+            public function action(): ?string
+            {
+                return null;
             }
 
             /**

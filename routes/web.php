@@ -30,11 +30,12 @@ Route::post('leave', [VisitController::class, 'leave'])->name('venue.leave');
  * package ships itself. It renders into the host's layout — the package decides
  * what the screen is, the application decides what frames it.
  *
- * Behind the door, because a menu of things to do is only useful to somebody
- * who can do them.
+ * Behind the door only if an operator says so. A menu is a thing venues put
+ * where people can read it, so the default is that anybody may — and going into
+ * an experience still means arriving first.
  */
 Route::livewire('experiences', 'venue::experiences')
-    ->middleware('visitor')
+    ->middleware('venue.menu')
     ->name('venue.experiences');
 
 /*
