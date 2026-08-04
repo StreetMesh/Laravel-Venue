@@ -20,6 +20,7 @@ class VenueServiceProvider extends ServiceProvider
         $this->app->singleton(Visitors::class);
         $this->app->singleton(Experiences\Experiences::class);
         $this->app->singleton(Gatherings\Gatherings::class);
+        $this->app->singleton(Gatherings\Results::class);
     }
 
     public function boot(): void
