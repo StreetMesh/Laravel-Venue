@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use StreetMesh\Protocol\Laravel\Permissions\Delegations;
 use StreetMesh\Protocol\Scope;
+use StreetMesh\Venue\Experiences\Experiences;
 use StreetMesh\Venue\Visitors;
 use Throwable;
 
@@ -26,6 +27,7 @@ final class VisitController
     public function __construct(
         private readonly Delegations $delegations,
         private readonly Visitors $visitors,
+        private readonly Experiences $experiences,
     ) {}
 
     public function start(Request $request): RedirectResponse
@@ -39,7 +41,15 @@ final class VisitController
         try {
             $begun = $this->delegations->begin(
                 $handle,
-                (array) config('streetmesh.venue.scopes', []),
+
+                /*
+                 * What is installed, rather than what is configured. A venue
+                 * whose configuration and packages disagreed would take
+                 * somebody through a consent screen and then fail to write the
+                 * record it had just promised them.
+                 */
+                $this->experiences->scopes((array) config('streetmesh.venue.scopes', [])),
+
                 route('venue.callback'),
             );
         } catch (Throwable $failed) {
@@ -113,7 +123,7 @@ final class VisitController
      */
     public static function asking(): array
     {
-        $scopes = (array) config('streetmesh.venue.scopes', []);
+        $scopes = app(Experiences::class)->scopes((array) config('streetmesh.venue.scopes', []));
 
         return array_values(array_filter(array_map(
             function (string $scope): ?string {

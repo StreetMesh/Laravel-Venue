@@ -18,6 +18,7 @@ class VenueServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/venue.php', 'streetmesh.venue');
 
         $this->app->singleton(Visitors::class);
+        $this->app->singleton(Experiences\Experiences::class);
         $this->app->singleton(Gatherings\Gatherings::class);
     }
 

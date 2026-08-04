@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Protocol\Laravel\Permissions\Delegation;
 use StreetMesh\Protocol\P256;
+use StreetMesh\Venue\Experiences\Experience;
+use StreetMesh\Venue\Experiences\Experiences;
 use StreetMesh\Venue\Visitors;
 
 class VenueTest extends TestCase
@@ -69,7 +71,8 @@ class VenueTest extends TestCase
 
         $this->get('/experiences')
             ->assertOk()
-            ->assertSee('No experiences installed yet');
+            ->assertSee('What there is to do here.')
+            ->assertSee('Nothing installed yet');
     }
 
     /**
@@ -89,7 +92,10 @@ class VenueTest extends TestCase
 
         $this->seated();
 
-        $this->get('/experiences')->assertSee('wire:model.live="filter"', escape: false);
+        // A Livewire component rather than a plain view, which is what the
+        // snapshot attribute proves — the screen itself has no form controls
+        // to point at now that it is a gallery.
+        $this->get('/experiences')->assertSee('wire:snapshot', escape: false);
     }
 
     /**
@@ -227,6 +233,112 @@ class VenueTest extends TestCase
         $request->session()->put(Visitors::SESSION_KEY, ['intended' => 'https://example.test']);
 
         $this->assertNull($this->app->make(Visitors::class)->current($request));
+    }
+
+    /**
+     * The gallery is what an installed experience appears in, and the only
+     * thing that puts it there is having been registered.
+     */
+    public function test_an_installed_experience_appears_in_the_gallery(): void
+    {
+        $this->app->make(Experiences::class)->register(new class implements Experience
+        {
+            public function name(): string
+            {
+                return 'com.example.pinball';
+            }
+
+            public function title(): string
+            {
+                return 'Pinball';
+            }
+
+            public function description(): string
+            {
+                return 'Nudge it and it tilts.';
+            }
+
+            public function icon(): string
+            {
+                return 'squares-2x2';
+            }
+
+            public function route(): string
+            {
+                return 'venue.experiences';
+            }
+
+            /**
+             * @return array<int, string>
+             */
+            public function scopes(): array
+            {
+                return ['repo:com.example.pinball?action=create'];
+            }
+        });
+
+        $this->seated();
+
+        $this->get('/experiences')
+            ->assertOk()
+            ->assertSee('Pinball')
+            ->assertSee('Nudge it and it tilts.')
+            ->assertDontSee('Nothing installed yet');
+    }
+
+    /**
+     * A venue asks for what it can actually use.
+     *
+     * Configured separately, this is where a consent screen and an installed
+     * package drift apart — somebody agrees to one thing and the venue then
+     * fails to write the record it just promised them.
+     */
+    public function test_what_a_visitor_is_asked_for_comes_from_what_is_installed(): void
+    {
+        $experiences = $this->app->make(Experiences::class);
+
+        $this->assertSame(['atproto'], $experiences->scopes());
+
+        $experiences->register(new class implements Experience
+        {
+            public function name(): string
+            {
+                return 'com.example.pinball';
+            }
+
+            public function title(): string
+            {
+                return 'Pinball';
+            }
+
+            public function description(): string
+            {
+                return '';
+            }
+
+            public function icon(): string
+            {
+                return 'squares-2x2';
+            }
+
+            public function route(): string
+            {
+                return 'venue.experiences';
+            }
+
+            /**
+             * @return array<int, string>
+             */
+            public function scopes(): array
+            {
+                return ['repo:com.example.pinball?action=create'];
+            }
+        });
+
+        $this->assertSame(
+            ['atproto', 'repo:com.example.pinball?action=create'],
+            $experiences->scopes(),
+        );
     }
 
     private function seated(): Delegation

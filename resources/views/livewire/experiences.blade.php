@@ -3,18 +3,20 @@
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use StreetMesh\Protocol\Laravel\Permissions\Delegation;
+use StreetMesh\Venue\Experiences\Experience;
+use StreetMesh\Venue\Experiences\Experiences;
 use StreetMesh\Venue\Visitors;
 
 new #[Title('Experiences')] class extends Component
 {
-    public string $filter = 'all';
-
     /**
-     * @return array<int, string>
+     * Everything this venue can offer.
+     *
+     * @return array<int, Experience>
      */
-    public function experiences(): array
+    public function offered(): array
     {
-        return [];
+        return app(Experiences::class)->all();
     }
 
     public function visitor(): ?Delegation
@@ -24,14 +26,9 @@ new #[Title('Experiences')] class extends Component
 };?>
 
 <div class="flex flex-col gap-6 p-6">
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-col gap-2">
         <flux:heading size="xl">{{ __('Experiences') }}</flux:heading>
-
-        {{-- Interactive, from a package, with no wiring in the host. --}}
-        <flux:select wire:model.live="filter" class="max-w-40">
-            <flux:select.option value="all">{{ __('All') }}</flux:select.option>
-            <flux:select.option value="open">{{ __('Open now') }}</flux:select.option>
-        </flux:select>
+        <flux:text>{{ __('What there is to do here.') }}</flux:text>
     </div>
 
     @if ($this->visitor() !== null)
@@ -56,14 +53,31 @@ new #[Title('Experiences')] class extends Component
         </flux:callout>
     @endif
 
-    @forelse ($this->experiences() as $experience)
-        <flux:card>{{ $experience }}</flux:card>
-    @empty
+    @if ($this->offered() === [])
         <flux:callout icon="squares-2x2">
-            <flux:callout.heading>{{ __('No experiences installed yet') }}</flux:callout.heading>
+            <flux:callout.heading>{{ __('Nothing installed yet') }}</flux:callout.heading>
             <flux:callout.text>
-                {{ __('An experience is a package: chess is one, and a shop would be another.') }}
+                {{ __('An experience is a package: chess is one, and a shop would be another. Installing one puts it here.') }}
             </flux:callout.text>
         </flux:callout>
-    @endforelse
+    @else
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach ($this->offered() as $experience)
+                <flux:card class="flex flex-col gap-3">
+                    <flux:icon :name="$experience->icon()" class="size-6" />
+
+                    <div class="flex flex-col gap-1">
+                        <flux:heading>{{ $experience->title() }}</flux:heading>
+                        <flux:text class="text-sm">{{ $experience->description() }}</flux:text>
+                    </div>
+
+                    <div class="mt-auto">
+                        <flux:button :href="route($experience->route())" size="sm" variant="ghost" wire:navigate>
+                            {{ __('Go in') }}
+                        </flux:button>
+                    </div>
+                </flux:card>
+            @endforeach
+        </div>
+    @endif
 </div>
