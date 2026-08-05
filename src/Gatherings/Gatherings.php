@@ -122,11 +122,23 @@ final class Gatherings
             ->first();
     }
 
-    public function conclude(Gathering $gathering): Gathering
+    /**
+     * Over, and what happened.
+     *
+     * The outcome is the experience's to describe — this holds no opinion about
+     * what a result looks like — but it is kept here, because the hub does not
+     * keep anything. A room is memory and is gone when the last person leaves,
+     * so a venue that recorded only "concluded" could never show a finished
+     * gathering to anybody who came back to look at it.
+     *
+     * @param  array<string, mixed>  $outcome
+     */
+    public function conclude(Gathering $gathering, array $outcome = []): Gathering
     {
         $gathering->update([
             'status' => Gathering::CONCLUDED,
             'concluded_at' => now(),
+            'outcome' => $outcome === [] ? null : $outcome,
         ]);
 
         return $gathering->refresh();

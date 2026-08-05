@@ -31,7 +31,10 @@ class Gathering extends Model
 
     protected function casts(): array
     {
-        return ['concluded_at' => 'datetime'];
+        return [
+            'concluded_at' => 'datetime',
+            'outcome' => 'array',
+        ];
     }
 
     /**

@@ -85,6 +85,28 @@ class GatheringTest extends TestCase
         $this->assertSame($again->id, $seat->delegation_id);
     }
 
+    /**
+     * The hub keeps nothing. A room is memory and is gone when the last person
+     * leaves, so a venue that recorded only "concluded" could say a gathering
+     * was over and nothing about it — which is what somebody coming back to
+     * look at a finished game would be shown.
+     */
+    public function test_a_concluded_gathering_remembers_how_it_ended(): void
+    {
+        $gathering = $this->gatherings()->open('com.streetmesh.games.chess');
+
+        $this->assertNull($gathering->outcome);
+
+        $concluded = $this->gatherings()->conclude($gathering, [
+            'outcome' => 'resignation',
+            'winner' => 'white',
+        ]);
+
+        $this->assertSame('resignation', $concluded->outcome['outcome']);
+        $this->assertSame('white', $concluded->outcome['winner']);
+        $this->assertFalse($concluded->isOpen());
+    }
+
     public function test_a_gathering_is_named_by_its_experience_and_which_one(): void
     {
         $gathering = $this->gatherings()->open(self::CHESS);

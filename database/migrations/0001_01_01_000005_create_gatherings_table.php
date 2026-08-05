@@ -39,6 +39,7 @@ return new class extends Migration
             $table->string('status')->default('open');
 
             $table->timestamp('concluded_at')->nullable();
+
             $table->timestamps();
 
             $table->index(['experience', 'status']);
