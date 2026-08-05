@@ -43,7 +43,7 @@ new #[Title('Experiences')] class extends Component
                     </div>
 
                     <div class="mt-auto">
-                        <flux:button :href="route($experience->route())" size="sm" variant="ghost" wire:navigate>
+                        <flux:button :href="route($experience->route())" size="sm" variant="primary" wire:navigate>
                             {{ $experience->action() ?? __('Launch') }}
                         </flux:button>
                     </div>
