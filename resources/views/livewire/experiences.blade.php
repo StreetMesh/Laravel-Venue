@@ -18,7 +18,12 @@ new #[Title('Experiences')] class extends Component
     }
 };?>
 
-<div class="flex flex-col gap-6 p-6">
+{{--
+    No padding of its own. The host's layout already pads the main area — Flux
+    applies `p-6 lg:p-8` to it — and a screen that pads again is a screen with
+    twice the margins of every other one, which is exactly how this looked.
+--}}
+<div class="flex flex-col gap-6">
     <div class="flex flex-col gap-2">
         <flux:heading size="xl">{{ __('Experiences') }}</flux:heading>
         <flux:text>{{ __('What there is to do here.') }}</flux:text>
