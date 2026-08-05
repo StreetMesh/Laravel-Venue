@@ -56,6 +56,51 @@ final readonly class Results
     }
 
     /**
+     * Who is actually at each of these right now.
+     *
+     * The venue knows who sat down; only the hub knows who is still sitting
+     * there. A seat outlives a dropped connection on purpose — otherwise an
+     * opponent could take your chair while you reconnected — so counting seats
+     * counts a history rather than a room.
+     *
+     * One question for all of them, and a room the hub has no answer for is
+     * absent rather than empty: "nobody is there" and "there is no room" are
+     * different things to say.
+     *
+     * An unreachable hub answers nothing at all, and callers show nothing
+     * rather than a number they cannot stand behind.
+     *
+     * @param  iterable<Gathering>  $gatherings
+     * @return array<string, array<int, array{name: string, seat: string}>>
+     */
+    public function at(iterable $gatherings): array
+    {
+        $rooms = [];
+
+        foreach ($gatherings as $gathering) {
+            $rooms[] = 'room='.rawurlencode($gathering->room());
+        }
+
+        if ($rooms === []) {
+            return [];
+        }
+
+        $answer = $this->network->get($this->origin().'/present?'.implode('&', $rooms));
+
+        if ($answer === null) {
+            return [];
+        }
+
+        try {
+            $present = json_decode($answer, true, flags: JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return [];
+        }
+
+        return is_array($present) ? $present : [];
+    }
+
+    /**
      * Where the hub answers questions, as opposed to where browsers talk to it.
      *
      * Derived from the one address an operator configures rather than asking
