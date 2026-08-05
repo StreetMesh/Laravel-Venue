@@ -42,6 +42,11 @@ abstract class TestCase extends Orchestra
         $app['config']->set('database.default', 'testing');
         $app['config']->set('streetmesh.host', 'games.test');
 
+        // A venue refuses to open without one, and these tests are a venue
+        // opening. Not a real secret and not one anything here checks against
+        // the outside world.
+        $app['config']->set('streetmesh.venue.secret', 'a-secret-shared-with-the-hub');
+
         /*
          * A stand-in for the host's chrome.
          *

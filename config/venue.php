@@ -42,6 +42,34 @@ return [
     'hub' => env('STREETMESH_HUB'),
 
     /*
+    |--------------------------------------------------------------------------
+    | What a hub says to this venue with
+    |--------------------------------------------------------------------------
+    |
+    | Everything else between the two is one-way and needs no secret: a ticket
+    | is signed here and merely verified there, and a result is asked for
+    | rather than announced. This is the one direction that cannot work that
+    | way — a hub telling a venue something has to be a hub the venue can
+    | recognise, and a hub holds no key of its own.
+    |
+    | The same value goes wherever the hub runs. Locally that is this file:
+    | `./hub-serve` reads it from here so there is one copy rather than two
+    | that have to agree.
+    |
+    | A comma-separated list is accepted, and that is how it is rotated: add
+    | the new one, deploy both sides, take the old one off. Replacing a single
+    | value in place means a moment where one side has changed and the other
+    | has not, which is an outage.
+    |
+    | This venue will not serve requests without one, because a venue that
+    | started anyway would look healthy and quietly never hear that a game had
+    | ended.
+    |
+    */
+
+    'secret' => env('SM_REALTIME_SECRET'),
+
+    /*
      |--------------------------------------------------------------------------
      | Who may see what is on
      |--------------------------------------------------------------------------

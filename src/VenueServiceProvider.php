@@ -4,6 +4,7 @@ namespace StreetMesh\Venue;
 
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
+use RuntimeException;
 use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 
 class VenueServiceProvider extends ServiceProvider
@@ -21,11 +22,15 @@ class VenueServiceProvider extends ServiceProvider
         $this->app->singleton(Experiences\Experiences::class);
         $this->app->singleton(Gatherings\Gatherings::class);
         $this->app->singleton(Gatherings\Results::class);
+        $this->app->singleton(Realtime\Secrets::class);
+        $this->app->singleton(Realtime\Occupancy::class);
     }
 
     public function boot(): void
     {
         $this->app->make(Capabilities::class)->register(new VenueCapability);
+
+        $this->refuseWithoutASecret();
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
@@ -69,5 +74,37 @@ class VenueServiceProvider extends ServiceProvider
             ->middleware('web')
             ->group(__DIR__.'/../routes/web.php');
 
+        /*
+         * Server to server, so none of the browser middleware. See the file.
+         */
+        $this->app['router']->middleware([])->group(__DIR__.'/../routes/realtime.php');
+
+    }
+
+    /**
+     * A venue with no shared secret does not open.
+     *
+     * A hub has to be able to tell this server that something happened — that a
+     * game ended, that somebody arrived or left — and it holds no key of its
+     * own to say so with. Without a secret this venue cannot tell a hub from
+     * anybody else, and the honest answer to that is to stop.
+     *
+     * Loudly and on the first request rather than the first finished game,
+     * because the failure without it is silence: results never arrive, nothing
+     * errors, and the venue looks perfectly well.
+     *
+     * Not in the console, which has to keep working — `key:generate` and
+     * `migrate` are how a server gets to the point of having one.
+     */
+    private function refuseWithoutASecret(): void
+    {
+        if ($this->app->runningInConsole() || $this->app->make(Realtime\Secrets::class)->configured()) {
+            return;
+        }
+
+        throw new RuntimeException(
+            'This venue has no SM_REALTIME_SECRET, so it cannot tell a hub from anybody else. '
+            .'Set one here and wherever the hub runs — the same value in both places.'
+        );
     }
 }
