@@ -5,6 +5,7 @@ namespace StreetMesh\Venue\Tests;
 use RuntimeException;
 use StreetMesh\Protocol\Laravel\Permissions\Delegation;
 use StreetMesh\Protocol\P256;
+use StreetMesh\Venue\Gatherings\Gathering;
 use StreetMesh\Venue\Gatherings\Gatherings;
 use StreetMesh\Venue\Visitors;
 
@@ -91,6 +92,34 @@ class GatheringTest extends TestCase
      * was over and nothing about it — which is what somebody coming back to
      * look at a finished game would be shown.
      */
+    /**
+     * An invitation goes out into the world and comes back through a message,
+     * a mail client, a paste. Any of those may lower-case it or leave a space
+     * on the end, and every one of them is still the same table.
+     *
+     * A key is a ULID — Crockford base32, case-insensitive by specification —
+     * so this is reading the address correctly rather than being lenient.
+     */
+    public function test_a_link_that_travelled_still_finds_its_table(): void
+    {
+        $game = $this->gatherings()->open('com.example.pinball');
+
+        foreach ([$game->key, strtolower($game->key), $game->key.' ', "  {$game->key}\n"] as $asked) {
+            $this->assertSame(
+                $game->id,
+                Gathering::query()->keyed($asked)->first()?->id,
+                "[{$asked}] should have found the table",
+            );
+        }
+    }
+
+    public function test_a_key_that_is_not_a_table_still_finds_nothing(): void
+    {
+        $this->gatherings()->open('com.example.pinball');
+
+        $this->assertNull(Gathering::query()->keyed('01ANOTHERKEYENTIRELY000000')->first());
+    }
+
     public function test_a_concluded_gathering_remembers_how_it_ended(): void
     {
         $gathering = $this->gatherings()->open('com.streetmesh.games.chess');

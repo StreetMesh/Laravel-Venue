@@ -76,7 +76,7 @@ class SecretTest extends TestCase
         $this->assertFalse($this->secrets()->configured());
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessageMatches('/SM_REALTIME_SECRET/');
+        $this->expectExceptionMessageMatches('/STREETMESH_REALTIME_SECRET/');
 
         $this->secrets()->all();
     }

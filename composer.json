@@ -17,6 +17,20 @@
     },
     "repositories": [
         {
+            "type": "path",
+            "url": "../protocol-laravel",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../protocol",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
             "type": "vcs",
             "url": "https://github.com/StreetMesh/Protocol-Laravel.git"
         },

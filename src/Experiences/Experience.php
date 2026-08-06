@@ -62,4 +62,22 @@ interface Experience
      * @return array<int, string> ATProtocol scope strings
      */
     public function scopes(): array;
+
+    /**
+     * Where this experience's room lives, or null if nothing about it is live.
+     *
+     * An absolute path to a directory holding a Node package whose entry point
+     * default-exports `{ name, room }`. The venue copies it into the hub it
+     * builds; it never imports it, and no PHP here runs a line of what is
+     * inside.
+     *
+     * Declared rather than discovered, for the same reason scopes are. Going
+     * looking would mean assuming a directory layout that belongs to somebody
+     * else's package — an objection the hub's own `discover.ts` already makes
+     * about itself.
+     *
+     * Null is an ordinary answer. A gallery or a reading room is a perfectly
+     * good experience with nobody to keep in step.
+     */
+    public function room(): ?string;
 }

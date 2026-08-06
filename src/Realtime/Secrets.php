@@ -44,7 +44,7 @@ final class Secrets
 
         if ($secrets === []) {
             throw new RuntimeException(
-                'No SM_REALTIME_SECRET is set, so this venue cannot tell a hub from anybody else. '
+                'No STREETMESH_REALTIME_SECRET is set, so this venue cannot tell a hub from anybody else. '
                 .'Set the same value here and where the hub runs.'
             );
         }

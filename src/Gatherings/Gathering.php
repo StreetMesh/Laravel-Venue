@@ -38,6 +38,27 @@ class Gathering extends Model
     }
 
     /**
+     * Found by the name in a link, however that link came back.
+     *
+     * A key is a ULID, and a ULID is Crockford base32 — case-insensitive by
+     * specification, written in upper case by convention. An invitation goes
+     * out into the world and returns through a message, a mail client, a
+     * paste, and any of those may lower-case it or leave a space on the end.
+     * Every one of them is still the same table.
+     *
+     * Matching the stored text exactly meant a link that had travelled at all
+     * arrived as "There is no game here" — which reads as the game being over
+     * rather than as the address having been tidied up on the way.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Gathering>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Gathering>
+     */
+    public function scopeKeyed($query, string $key)
+    {
+        return $query->where('key', strtoupper(trim($key)));
+    }
+
+    /**
      * @return HasMany<Seat, $this>
      */
     public function seats(): HasMany

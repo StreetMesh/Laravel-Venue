@@ -67,7 +67,7 @@ return [
     |
     */
 
-    'secret' => env('SM_REALTIME_SECRET'),
+    'secret' => env('STREETMESH_REALTIME_SECRET'),
 
     /*
      |--------------------------------------------------------------------------
@@ -90,5 +90,28 @@ return [
      */
 
     'gallery' => env('STREETMESH_VENUE_GALLERY', 'anybody'),
+
+    /*
+     |--------------------------------------------------------------------------
+     | Building this server's hub
+     |--------------------------------------------------------------------------
+     |
+     | A StreetMesh server has at most one hub, and what makes it this server's
+     | hub is the rooms it serves. Only this server knows which those are, so
+     | `php artisan hub:build` writes it out — flat and self-contained, with
+     | everything copied in.
+     |
+     | `hub` is where the hub library lives and `into` is where the artifact is
+     | written. Both default to the sensible place in a checkout, and are here
+     | for a server arranged differently.
+     |
+     */
+    'build' => [
+
+        'hub' => env('STREETMESH_HUB_SOURCE'),
+
+        'into' => env('STREETMESH_HUB_BUILD'),
+
+    ],
 
 ];

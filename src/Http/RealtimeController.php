@@ -36,7 +36,7 @@ final class RealtimeController
             return response()->json(['heard' => false], 401);
         }
 
-        $gathering = Gathering::query()->where('key', $this->keyIn((string) $request->input('room')))->first();
+        $gathering = Gathering::query()->keyed($this->keyIn((string) $request->input('room')))->first();
 
         if ($gathering === null) {
             // A room this venue did not open. Not an error — a hub may serve

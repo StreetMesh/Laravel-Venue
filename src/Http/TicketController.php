@@ -37,7 +37,7 @@ final class TicketController
             return response()->json(['error' => 'Nobody is visiting.'], 401);
         }
 
-        $gathering = Gathering::query()->where('key', $key)->first();
+        $gathering = Gathering::query()->keyed($key)->first();
 
         if ($gathering === null) {
             return response()->json(['error' => 'There is nothing here by that name.'], 404);

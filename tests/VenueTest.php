@@ -395,6 +395,11 @@ class VenueTest extends TestCase
             {
                 return ['repo:com.example.pinball?action=create'];
             }
+
+            public function room(): ?string
+            {
+                return null;
+            }
         });
 
         $this->seated();
@@ -457,6 +462,11 @@ class VenueTest extends TestCase
             public function scopes(): array
             {
                 return ['repo:com.example.pinball?action=create'];
+            }
+
+            public function room(): ?string
+            {
+                return null;
             }
         });
 
