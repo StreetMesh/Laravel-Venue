@@ -32,7 +32,16 @@ final class Deploy
         private readonly string $endpoint,
         private readonly string $applicationId,
         private readonly string $token,
-        private readonly string $root,
+        /**
+         * The repository, not the artifact.
+         *
+         * The CLI works out what to send from git — which remote, which branch,
+         * which commit — and the application itself knows which directory
+         * within that to build. Run from the artifact it would be reading the
+         * same repository from further down, which is the same answer by a
+         * longer route.
+         */
+        private readonly string $repository,
     ) {}
 
     /**
@@ -70,7 +79,7 @@ final class Deploy
             'npx', '--yes', '@colyseus/cloud', 'deploy',
             '--applicationId', $this->applicationId,
             '--token', $this->token,
-        ], $this->root, timeout: self::SECONDS);
+        ], $this->repository, timeout: self::SECONDS);
 
         /*
          * Nothing to say to it.

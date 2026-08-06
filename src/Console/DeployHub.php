@@ -73,7 +73,7 @@ class DeployHub extends Command
             endpoint: Deploy::endpointFor($hub),
             applicationId: (string) env('COLYSEUS_APPLICATION_ID'),
             token: (string) env('COLYSEUS_TOKEN'),
-            root: $into,
+            repository: base_path(),
         );
 
         $this->line('  <fg=gray>hub  </> '.Deploy::endpointFor($hub).' is '.($deploy->running() ?? 'not answering'));
