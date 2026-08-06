@@ -7,6 +7,7 @@ use Livewire\Livewire;
 use RuntimeException;
 use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Venue\Console\BuildHub;
+use StreetMesh\Venue\Console\DeployHub;
 
 class VenueServiceProvider extends ServiceProvider
 {
@@ -34,7 +35,7 @@ class VenueServiceProvider extends ServiceProvider
         $this->refuseUnlessEquipped();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([BuildHub::class]);
+            $this->commands([BuildHub::class, DeployHub::class]);
         }
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');

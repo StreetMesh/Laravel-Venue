@@ -249,12 +249,17 @@ final class Build
          * what we want today, and WebTransport later is this file and nothing
          * else — which is the reason the hub stopped standing up a server of its
          * own.
+         *
+         * `@colyseus/tools` exports its `config()` as a CommonJS default, which
+         * a type checker reading this as an ES module cannot call. It only
+         * validates the options and hands them back, and `listen` takes them
+         * either way — so the options are exported directly rather than
+         * carrying a build failure for a function that does nothing here.
          */
 
-        import config from '@colyseus/tools'
         import { hub } from './hub/mod.ts'
         {$imports}
-        export default config(hub({$rooms}))
+        export default hub({$rooms})
 
         TS;
     }
@@ -288,7 +293,18 @@ final class Build
             'type' => 'module',
             'description' => 'Generated. This server\'s hub, with the rooms it has installed.',
             'scripts' => [
+                // What a host runs before starting it. Nothing is emitted —
+                // the sources run as they are — so this is the type check,
+                // which is the useful thing to fail a deploy on.
+                'build' => 'tsc --noEmit',
                 'start' => 'node --experimental-strip-types index.ts',
+            ],
+            'devDependencies' => [
+                'typescript' => '^5.7.0',
+                '@types/node' => '^22.10.0',
+                // The hub types its two routes against Express, which is what
+                // `@colyseus/tools` hands them.
+                '@types/express' => '^5.0.6',
             ],
             'dependencies' => $this->dependencies(),
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n";
