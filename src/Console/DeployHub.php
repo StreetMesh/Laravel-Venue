@@ -93,7 +93,11 @@ class DeployHub extends Command
             $this->components->warn('Sending it regardless, which ends every game in progress.');
         }
 
-        $sent = $deploy->send($fingerprint, regardless: (bool) $this->option('force'));
+        $sent = $deploy->send(
+            $fingerprint,
+            regardless: (bool) $this->option('force'),
+            watching: fn (string $said) => $this->line('  <fg=gray>colyseus</> '.$said),
+        );
 
         if (! $sent['deployed'] && str_contains($sent['why'], 'already this build')) {
             $this->components->info('Nothing to do — '.$sent['why'].'.');

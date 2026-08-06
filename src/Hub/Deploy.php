@@ -66,7 +66,10 @@ final class Deploy
      *
      * @return array{deployed: bool, why: string}
      */
-    public function send(string $fingerprint, bool $regardless = false): array
+    /**
+     * @param  null|callable(string): void  $watching  every line the CLI writes
+     */
+    public function send(string $fingerprint, bool $regardless = false, ?callable $watching = null): array
     {
         // Already the hub we would send. Not deploying is the whole point of
         // asking: a hub restart disposes every room, so a venue release that
@@ -93,7 +96,21 @@ final class Deploy
          */
         $deploy->setInput('');
 
-        $deploy->run();
+        /*
+         * Passed through as it arrives rather than kept for a failure.
+         *
+         * This is the one step here that happens on somebody else's
+         * infrastructure, and the first time it did not work the only thing
+         * anybody had to go on was that a hub never appeared. What the CLI
+         * said was thrown away because it had exited zero.
+         */
+        $deploy->run($watching === null ? null : function (string $type, string $line) use ($watching): void {
+            foreach (preg_split('/\R/', rtrim($line)) ?: [] as $said) {
+                if (trim($said) !== '') {
+                    $watching($said);
+                }
+            }
+        });
 
         if (! $deploy->isSuccessful()) {
             return ['deployed' => false, 'why' => trim($deploy->getErrorOutput() ?: $deploy->getOutput())];
