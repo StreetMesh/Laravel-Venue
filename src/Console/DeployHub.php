@@ -133,6 +133,10 @@ class DeployHub extends Command
      */
     private function uncommitted(): ?string
     {
+        if (! $this->readable()) {
+            return null;
+        }
+
         $git = new Process(['git', 'status', '--porcelain'], base_path());
         $git->run();
 
@@ -141,8 +145,34 @@ class DeployHub extends Command
         return ($git->isSuccessful() && $changed !== '') ? $changed : null;
     }
 
+    /**
+     * Whether git here is describing this working tree.
+     *
+     * Laravel Cloud's build detaches the index: `git status` reports every
+     * tracked file as staged-deleted and every file as untracked, which reads
+     * exactly like a checkout where somebody has thrown everything away. Both
+     * checks below are about the difference between what is here and what was
+     * pushed, and an index that lists nothing cannot answer that.
+     *
+     * `git ls-files` is the question asked plainly — it prints what the index
+     * holds. Empty means there is nothing to compare against, so the checks
+     * abstain rather than refuse. They exist to catch a person deploying
+     * something other than what they are looking at, and there is no person.
+     */
+    private function readable(): bool
+    {
+        $git = new Process(['git', 'ls-files'], base_path());
+        $git->run();
+
+        return $git->isSuccessful() && trim($git->getOutput()) !== '';
+    }
+
     private function stale(string $into): ?string
     {
+        if (! $this->readable()) {
+            return null;
+        }
+
         $git = new Process(['git', 'status', '--porcelain', '--', $into], base_path());
         $git->run();
 

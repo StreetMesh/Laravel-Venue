@@ -85,16 +85,21 @@ final class Deploy
         ], $this->repository, timeout: self::SECONDS);
 
         /*
-         * Nothing to say to it.
+         * Yes, we meant it.
          *
-         * The CLI asks a question when the working tree is dirty — only pushed
+         * The CLI asks a question when git reports a dirty tree — only pushed
          * files deploy, so it wants to know you meant it. With no input it
-         * waits for an answer that is never coming, which in a deploy pipeline
-         * is a release that hangs until something else gives up. Refused
-         * before we get here, and closed off in case it ever asks something
-         * else.
+         * waits for an answer that never comes, which in a pipeline is a
+         * release that hangs.
+         *
+         * The answer is yes because the question is not really about us. What
+         * gets deployed is the pushed commit either way; the prompt is telling
+         * you that your local edits will not be included, which in a deploy
+         * container is not news. Laravel Cloud's build detaches the git index
+         * — every tracked file reads as deleted and every file as untracked —
+         * so the question is asked there every single time.
          */
-        $deploy->setInput('');
+        $deploy->setInput("y\n");
 
         /*
          * Passed through as it arrives rather than kept for a failure.
