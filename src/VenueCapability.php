@@ -31,6 +31,21 @@ final class VenueCapability implements Capability
     }
 
     /**
+     * Arriving, which is not signing in.
+     *
+     * A venue holds no accounts. Somebody turns up with an address issued by
+     * their own server and asks that server for permission — so the way in is
+     * a box to type an address into, and a login form would be a key to a lock
+     * this server does not have.
+     *
+     * @return array{label: string, route: string}
+     */
+    public function frontAction(): array
+    {
+        return ['label' => 'Connect', 'route' => 'venue.connect'];
+    }
+
+    /**
      * @return array<int, Widget>
      */
     public function widgets(): array
