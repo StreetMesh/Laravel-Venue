@@ -1,11 +1,24 @@
 <?php
 
+use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use StreetMesh\Protocol\Laravel\Identity\Identities;
 use StreetMesh\Venue\Http\ConnectController;
 
-new #[Title('Connect')] class extends Component
+/*
+ * A door, not a page inside the building.
+ *
+ * The host's auth layout: no sidebar, no navigation, nothing behind it — the
+ * same frame its own login screen uses, because this is the same kind of
+ * moment. It used to render into the application shell and compensate with a
+ * narrow column, which meant somebody who had not arrived yet was shown the
+ * furniture of a place they were not in.
+ *
+ * Named rather than assumed. A package cannot draw its own chrome, and saying
+ * which frame it wants is the contract — see the stub in tests/fixtures.
+ */
+new #[Layout('layouts::auth')] #[Title('Connect')] class extends Component
 {
     public string $handle = '';
 
@@ -41,14 +54,13 @@ new #[Title('Connect')] class extends Component
 };?>
 
 {{--
-    Constrained to the same width as the login form, because this is the same
-    kind of screen: one field, one decision, nothing to scan. A form that spans
-    a whole page reads as though it wanted more from you than an address.
+    The layout centres this and gives it a width, the way it does for a login
+    form. One field, one decision, nothing to scan.
 --}}
-<div class="mx-auto flex w-full max-w-sm flex-col gap-6 py-10">
+<div class="flex w-full flex-col gap-6">
     <div class="flex flex-col gap-2 text-center">
         <flux:heading size="xl">{{ __('Connect') }}</flux:heading>
-        <flux:text>{{ __('There is nothing to sign up for here.') }}</flux:text>
+        <flux:text>{{ __('Sign in with the address your own server gave you. There is no account to make here.') }}</flux:text>
     </div>
 
     {{--
@@ -61,12 +73,14 @@ new #[Title('Connect')] class extends Component
 
         <flux:input
             name="handle"
-            :label="__('Your StreetMesh Address')"
+            :label="__('Your address')"
             placeholder="alice.example.com"
             :value="old('handle', $this->mine())"
             autofocus
             autocomplete="username"
-            :description="__('We\'ll send you there to log in.')"
+            autocapitalize="off"
+            spellcheck="false"
+            :description="__('We will send you to that server to ask.')"
         />
 
         @error(ConnectController::REFUSAL)
@@ -76,7 +90,7 @@ new #[Title('Connect')] class extends Component
         @enderror
 
         <flux:button type="submit" variant="primary" class="w-full">
-            {{ __('Authorize') }}
+            {{ __('Continue') }}
         </flux:button>
     </form>
 

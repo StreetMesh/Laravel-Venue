@@ -12,6 +12,7 @@ use StreetMesh\Venue\Experiences\Experience;
 use StreetMesh\Venue\Experiences\Experiences;
 use StreetMesh\Venue\Http\ConnectController;
 use StreetMesh\Venue\Tests\Fixtures\Resident;
+use StreetMesh\Venue\VenueCapability;
 use StreetMesh\Venue\Visitors;
 
 class VenueTest extends TestCase
@@ -140,9 +141,17 @@ class VenueTest extends TestCase
     {
         $this->get('/connect')
             ->assertOk()
-            ->assertSee('Your StreetMesh Address')
-            ->assertSee('There is nothing to sign up for here.')
-            ->assertSee('Authorize')
+            ->assertSee('Your address')
+            ->assertSee('There is no account to make here.')
+            ->assertSee('Continue')
+
+            /*
+             * No password, and no sign of the building. This is a door: the
+             * host's auth layout, the same frame its own login screen uses. It
+             * used to render inside the application shell, which showed
+             * somebody who had not arrived the furniture of a place they were
+             * not in.
+             */
             ->assertDontSee('Password')
 
             /*
@@ -309,6 +318,54 @@ class VenueTest extends TestCase
         // Still seated, and still answerable — the menu simply is not the one
         // answering.
         $this->assertSame($delegation->id, session(Visitors::SESSION_KEY));
+    }
+
+    /**
+     * The front page offers the door to somebody outside it, and something
+     * else to somebody already through.
+     *
+     * A visitor is not `@auth` — the framework knows nothing about them — so
+     * the page went on offering "Connect" to people standing inside. Only this
+     * package can tell the difference, which is why it answers the question.
+     */
+    public function test_the_front_page_stops_offering_the_door_once_somebody_is_through(): void
+    {
+        $capability = new VenueCapability;
+
+        // A browser, because whether somebody is here is a question about one.
+        $request = Request::create('/');
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        $this->assertSame(
+            ['label' => 'Connect', 'route' => 'venue.connect'],
+            $capability->frontAction(),
+            'somebody who has not arrived is offered the way in',
+        );
+
+        $this->seated();
+
+        $this->assertSame(
+            ['label' => 'Experiences', 'route' => 'venue.experiences'],
+            $capability->frontAction(),
+            'somebody already here is offered what is on',
+        );
+    }
+
+    /**
+     * And nothing to ask, where there is no browser to ask about.
+     *
+     * A console command has no session, and the session store throws rather
+     * than shrugging. The plain answer is the right one there.
+     */
+    public function test_the_way_in_is_offered_where_there_is_no_session_at_all(): void
+    {
+        $this->app->instance('request', Request::create('/'));
+
+        $this->assertSame(
+            ['label' => 'Connect', 'route' => 'venue.connect'],
+            (new VenueCapability)->frontAction(),
+        );
     }
 
     /**
