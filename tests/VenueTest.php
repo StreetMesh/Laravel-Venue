@@ -285,7 +285,12 @@ class VenueTest extends TestCase
     {
         $delegation = $this->seated();
 
-        $this->post('/leave')->assertRedirect(route('venue.connect'));
+        /*
+         * To the front of the venue, not to the door. Somebody who has just
+         * revoked is standing in the building holding nothing, and being shown
+         * the way in again reads as being shown out.
+         */
+        $this->post('/leave')->assertRedirect('/');
 
         $this->assertNull(session(Visitors::SESSION_KEY));
         $this->assertNull(

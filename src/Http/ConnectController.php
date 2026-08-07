@@ -116,11 +116,26 @@ final class ConnectController
         return redirect()->to(is_string($intended) ? $intended : route('venue.experiences'));
     }
 
+    /**
+     * Giving the permission back, and staying.
+     *
+     * To the front of the venue rather than to the door. Somebody who has just
+     * revoked has not left the building — they are standing in it, holding
+     * nothing, and the sensible next thing is the front page, where the way
+     * back in is offered if they want it.
+     *
+     * It used to land on the door itself, which reads as being shown out.
+     *
+     * The root rather than a route name: the application owns its front page
+     * and is free to call it whatever it likes. `home` is what this project's
+     * host happens to name it, and a package that assumed so would break in
+     * anybody else's.
+     */
     public function leave(Request $request): RedirectResponse
     {
         $this->visitors->leave($request);
 
-        return redirect()->route('venue.connect');
+        return redirect()->to('/');
     }
 
     /**
