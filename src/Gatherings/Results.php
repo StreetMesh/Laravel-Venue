@@ -101,6 +101,34 @@ final readonly class Results
     }
 
     /**
+     * Whether the hub is answering at all.
+     *
+     * `at()` returns nothing both when no rooms are open and when the hub could
+     * not be reached, which is fine for drawing a lobby and dangerous for
+     * anything that acts on the answer: a hub having a bad minute would look
+     * exactly like every table being empty.
+     *
+     * So anything that deletes asks this first, and does nothing when the
+     * answer is no.
+     */
+    public function reachable(): bool
+    {
+        try {
+            $origin = $this->origin();
+        } catch (RuntimeException $none) {
+            /*
+             * No hub configured at all, which certainly means it cannot be
+             * asked. A venue refuses to serve without one, but that guard is
+             * skipped in the console — and a scheduled command should report a
+             * misconfigured server rather than crash on it every five minutes.
+             */
+            return false;
+        }
+
+        return $this->network->get($origin.'/build') !== null;
+    }
+
+    /**
      * Where the hub answers questions, as opposed to where browsers talk to it.
      *
      * Derived from the one address an operator configures rather than asking

@@ -7,7 +7,9 @@ use Livewire\Livewire;
 use RuntimeException;
 use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Venue\Console\BuildHub;
+use Illuminate\Console\Scheduling\Schedule;
 use StreetMesh\Venue\Console\DeployHub;
+use StreetMesh\Venue\Console\TidyGatherings;
 
 class VenueServiceProvider extends ServiceProvider
 {
@@ -35,8 +37,21 @@ class VenueServiceProvider extends ServiceProvider
         $this->refuseUnlessEquipped();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([BuildHub::class, DeployHub::class]);
+            $this->commands([BuildHub::class, DeployHub::class, TidyGatherings::class]);
         }
+
+        /*
+         * Scheduled by the package rather than left to an operator to wire up.
+         * Tables nobody came to are a consequence of running a venue at all, so
+         * clearing them is part of being one — and the failure mode of
+         * forgetting is a lobby that fills with invitations nobody can accept.
+         *
+         * Every five minutes, against a ten-minute wait: often enough that a
+         * lobby stays honest, rarely enough that the hub is barely asked.
+         */
+        $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
+            $schedule->command(TidyGatherings::class)->everyFiveMinutes()->withoutOverlapping();
+        });
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 

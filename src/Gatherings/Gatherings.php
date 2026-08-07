@@ -133,6 +133,24 @@ final class Gatherings
      *
      * @param  array<string, mixed>  $outcome
      */
+    /**
+     * Tables somebody opened and nobody came to.
+     *
+     * One seat, because two is a game — whether or not a move was made, two
+     * people met, and that is not this. Still open, because a concluded
+     * gathering is a record rather than an invitation.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Gathering>
+     */
+    public function waiting(int $minutes): \Illuminate\Database\Eloquent\Collection
+    {
+        return Gathering::query()
+            ->where('status', Gathering::OPEN)
+            ->where('created_at', '<', now()->subMinutes($minutes))
+            ->has('seats', '<', 2)
+            ->get();
+    }
+
     public function conclude(Gathering $gathering, array $outcome = []): Gathering
     {
         $gathering->update([
