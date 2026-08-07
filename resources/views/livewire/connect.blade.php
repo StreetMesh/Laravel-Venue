@@ -60,7 +60,7 @@ new #[Layout('layouts::auth')] #[Title('Connect')] class extends Component
 <div class="flex w-full flex-col gap-6">
     <div class="flex flex-col gap-2 text-center">
         <flux:heading size="xl">{{ __('Connect') }}</flux:heading>
-        <flux:text>{{ __('Sign in with the address your own server gave you. There is no account to make here.') }}</flux:text>
+        <flux:text>{{ __('Sign in with your StreetMesh account.') }}</flux:text>
     </div>
 
     {{--

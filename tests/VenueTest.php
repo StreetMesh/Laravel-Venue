@@ -142,7 +142,7 @@ class VenueTest extends TestCase
         $this->get('/connect')
             ->assertOk()
             ->assertSee('Your address')
-            ->assertSee('There is no account to make here.')
+            ->assertSee('Sign in with your StreetMesh account.')
             ->assertSee('Continue')
 
             /*
