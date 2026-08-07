@@ -71,17 +71,36 @@ new #[Layout('layouts::auth')] #[Title('Connect')] class extends Component
     <form method="POST" action="{{ route('venue.connect.start') }}" class="flex flex-col gap-4">
         @csrf
 
-        <flux:input
-            name="handle"
-            :label="__('Your address')"
-            placeholder="alice.example.com"
-            :value="old('handle', $this->mine())"
-            autofocus
-            autocomplete="username"
-            autocapitalize="off"
-            spellcheck="false"
-            :description="__('We will send you to that server to ask.')"
-        />
+        {{--
+            The label is read and not shown.
+
+            There is one field on this screen and the placeholder already says
+            what shape the answer takes, so a heading above it is a word nobody
+            reads twice. A real `<label>` rather than `aria-label`, because
+            screen readers are not the only thing that follows one — clicking it
+            still focuses the field, and it survives translation.
+        --}}
+        <flux:field>
+            {{--
+                `for` and `id` written out rather than left to Flux, which pairs
+                them in the browser. A label that is only associated once
+                JavaScript has run is a label that is not associated in the
+                markup, and this one is invisible — so if the pairing ever
+                failed there would be nothing on screen to notice it by.
+            --}}
+            <flux:label class="sr-only" for="handle">{{ __('Your address') }}</flux:label>
+
+            <flux:input
+                id="handle"
+                name="handle"
+                placeholder="alice.example.com"
+                :value="old('handle', $this->mine())"
+                autofocus
+                autocomplete="username"
+                autocapitalize="off"
+                spellcheck="false"
+            />
+        </flux:field>
 
         @error(ConnectController::REFUSAL)
             <flux:callout variant="danger" icon="exclamation-triangle">
