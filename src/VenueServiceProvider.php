@@ -76,14 +76,28 @@ class VenueServiceProvider extends ServiceProvider
          * surfaces that overlap, the front page and the home page, belong to
          * the application.
          */
+        /*
+         * Server to server, so none of the browser middleware. See the file.
+         *
+         * Registered before the switch below, and deliberately: a hub may still
+         * be finishing something that was started before an operator turned the
+         * venue off, and refusing to hear about it would lose a game rather
+         * than close a door.
+         */
+        $this->app['router']->middleware([])->group(__DIR__.'/../routes/realtime.php');
+
+        /*
+         * Switched off means gone, not hidden — the same rule the domicile
+         * follows. A server that is not a venue has no door to one, and no
+         * menu of things to do at it.
+         */
+        if (! $this->app->make(Capabilities::class)->offers('venue')) {
+            return;
+        }
+
         $this->app['router']
             ->middleware('web')
             ->group(__DIR__.'/../routes/web.php');
-
-        /*
-         * Server to server, so none of the browser middleware. See the file.
-         */
-        $this->app['router']->middleware([])->group(__DIR__.'/../routes/realtime.php');
 
     }
 

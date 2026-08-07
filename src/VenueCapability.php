@@ -63,6 +63,28 @@ final class VenueCapability implements Capability
     }
 
     /**
+     * A visitor: somebody holding permission from another server.
+     *
+     * Their own address, because that is who they are here — this server issued
+     * them nothing and knows them by no other name.
+     *
+     * @return null|array{name: string, leave: array{label: string, route: string}}
+     */
+    public function whoever(): ?array
+    {
+        if (! request()->hasSession()) {
+            return null;
+        }
+
+        $visitor = app(Visitors::class)->current(request());
+
+        return $visitor === null ? null : [
+            'name' => (string) $visitor->handle,
+            'leave' => ['label' => 'Leave', 'route' => 'venue.leave'],
+        ];
+    }
+
+    /**
      * @return array<int, Widget>
      */
     public function widgets(): array

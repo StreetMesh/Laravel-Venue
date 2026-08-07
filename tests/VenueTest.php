@@ -321,6 +321,38 @@ class VenueTest extends TestCase
     }
 
     /**
+     * The chrome shows a visitor as somebody who is here.
+     *
+     * The corner of every screen used to check `auth()`, decide nobody was
+     * there, and offer "Log in" — for an account a venue cannot issue, at a
+     * path it should not even serve. A visitor is not signed in; only this
+     * package can see them.
+     */
+    public function test_a_visitor_is_somebody_the_chrome_can_see(): void
+    {
+        $capability = new VenueCapability;
+
+        $request = Request::create('/experiences');
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        $this->assertNull($capability->whoever(), 'nobody is here yet');
+
+        $delegation = $this->seated();
+
+        $this->assertSame(
+            [
+                'name' => 'alice.home.test',
+                'leave' => ['label' => 'Leave', 'route' => 'venue.leave'],
+            ],
+            $capability->whoever(),
+            'a visitor is known by the address their own server issued',
+        );
+
+        $this->assertNotNull($delegation);
+    }
+
+    /**
      * The front page offers the door to somebody outside it, and something
      * else to somebody already through.
      *
