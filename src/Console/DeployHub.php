@@ -74,6 +74,7 @@ class DeployHub extends Command
             applicationId: (string) env('COLYSEUS_APPLICATION_ID'),
             token: (string) env('COLYSEUS_TOKEN'),
             repository: base_path(),
+            branch: $this->branch(),
         );
 
         $this->line('  <fg=gray>hub  </> '.Deploy::endpointFor($hub).' is '.($deploy->running() ?? 'not answering'));
@@ -124,6 +125,32 @@ class DeployHub extends Command
      * a room changed without rebuilding would ship the previous hub while this
      * command waited for a fingerprint that was never sent.
      */
+    /**
+     * The branch being deployed, which the checkout may not be able to say.
+     *
+     * A build container checks out a commit, leaving `HEAD` detached and git
+     * with no branch name to report. Asked for one anyway, the deploy CLI hands
+     * `(no branch)` to a shell on the other side and it fails as a bash syntax
+     * error about a bracket — a long way from anything anybody would recognise.
+     *
+     * So: what git says when git knows, and what the operator says when it does
+     * not.
+     */
+    private function branch(): string
+    {
+        $git = new Process(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], base_path());
+        $git->run();
+
+        $named = trim($git->getOutput());
+
+        // `HEAD` is what git answers when it is not on a branch at all.
+        if ($git->isSuccessful() && $named !== '' && $named !== 'HEAD') {
+            return $named;
+        }
+
+        return (string) (env('COLYSEUS_BRANCH') ?: 'main');
+    }
+
     /**
      * Anything at all uncommitted, which is a different question from stale.
      *

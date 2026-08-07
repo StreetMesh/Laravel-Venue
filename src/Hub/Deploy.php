@@ -42,6 +42,16 @@ final class Deploy
          * longer route.
          */
         private readonly string $repository,
+
+        /**
+         * Which branch to deploy, because the checkout may not know.
+         *
+         * A build container checks out a commit rather than a branch, so `HEAD`
+         * is detached and git has no name to give. The CLI passes whatever it
+         * finds straight through to a shell on the other side, where
+         * `origin/(no branch)` becomes a syntax error in somebody else's bash.
+         */
+        private readonly string $branch,
     ) {}
 
     /**
@@ -82,6 +92,7 @@ final class Deploy
             'npx', '--yes', '@colyseus/cloud', 'deploy',
             '--applicationId', $this->applicationId,
             '--token', $this->token,
+            '--branch', $this->branch,
         ], $this->repository, timeout: self::SECONDS);
 
         /*
