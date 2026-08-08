@@ -6,7 +6,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use StreetMesh\Protocol\Laravel\Permissions\Delegations;
-use StreetMesh\Protocol\Scope;
 use StreetMesh\Venue\Experiences\Experiences;
 use StreetMesh\Venue\Visitors;
 use Throwable;
@@ -87,8 +86,27 @@ final class ConnectController
     {
         if ($request->filled('error')) {
             /*
-             * A refusal is an answer. Saying so beats leaving somebody at a
-             * door wondering whether it worked.
+             * Deciding not to is not the same as something going wrong.
+             *
+             * Somebody who pressed Cancel is answered by being let back into
+             * the venue, at the menu anybody can read. Returning them to the
+             * door with "permission was not given" told them what they had just
+             * decided and then asked the same question again, which is how a
+             * refusal ends up feeling like a failed attempt.
+             *
+             * Where they were heading is dropped with it. They abandoned that
+             * journey, and a remembered destination outliving the decision
+             * would take them somewhere unasked-for on their next arrival.
+             */
+            if ($request->query('error') === 'access_denied') {
+                $request->session()->forget(Visitors::INTENDED_KEY);
+
+                return redirect()->route('venue.experiences');
+            }
+
+            /*
+             * Anything else did go wrong, and saying so beats leaving somebody
+             * at a door wondering whether it worked.
              */
             return redirect()->route('venue.connect')->withErrors([
                 self::REFUSAL => __('Your server did not give permission.'),
@@ -136,38 +154,5 @@ final class ConnectController
         $this->visitors->leave($request);
 
         return redirect()->to('/');
-    }
-
-    /**
-     * What this venue will ask for, as it will be written on their screen.
-     *
-     * Shown at the door as well as on their own server's consent screen,
-     * because somebody deciding whether to type their address here deserves to
-     * know what typing it leads to.
-     *
-     * @return array<int, string>
-     */
-    public static function asking(): array
-    {
-        $scopes = app(Experiences::class)->scopes((array) config('streetmesh.venue.scopes', []));
-
-        return array_values(array_filter(array_map(
-            function (string $scope): ?string {
-                $repo = Scope::parse($scope);
-
-                if ($repo === null) {
-                    return null;
-                }
-
-                return $repo->actions === [Scope::CREATE]
-                    ? __('add :what to your own records, and never change them', [
-                        'what' => implode(__(' and '), $repo->collections),
-                    ])
-                    : __('add, change and remove :what in your own records', [
-                        'what' => implode(__(' and '), $repo->collections),
-                    ]);
-            },
-            $scopes,
-        )));
     }
 }

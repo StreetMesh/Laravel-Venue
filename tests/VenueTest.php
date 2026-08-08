@@ -311,9 +311,43 @@ class VenueTest extends TestCase
         $this->assertNull(session(Visitors::SESSION_KEY));
     }
 
-    public function test_a_refusal_is_reported_rather_than_left_silent(): void
+    /**
+     * Cancelling is a decision, and the answer to it is being let back in.
+     *
+     * This used to return them to the door with "permission was not given",
+     * which told somebody what they had just chosen and then asked the same
+     * question again — a refusal made to feel like a failed attempt.
+     */
+    public function test_cancelling_puts_somebody_back_in_the_venue(): void
     {
         $this->get('/connect/callback?error=access_denied')
+            ->assertRedirect(route('venue.experiences'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull(session(Visitors::SESSION_KEY), 'refusing seats nobody');
+    }
+
+    /**
+     * A destination does not outlive the decision to abandon it. Left in the
+     * session it would fire on their next arrival, months later, and send them
+     * somewhere they had not asked to go.
+     */
+    public function test_cancelling_forgets_where_they_were_heading(): void
+    {
+        session([Visitors::INTENDED_KEY => url('/experiences/chess')]);
+
+        $this->get('/connect/callback?error=access_denied');
+
+        $this->assertNull(session(Visitors::INTENDED_KEY));
+    }
+
+    /**
+     * Anything that is not somebody choosing is something going wrong, and that
+     * still belongs at the door with an explanation.
+     */
+    public function test_a_failure_is_reported_rather_than_left_silent(): void
+    {
+        $this->get('/connect/callback?error=server_error')
             ->assertRedirect(route('venue.connect'))
             ->assertSessionHasErrors(ConnectController::REFUSAL);
     }
