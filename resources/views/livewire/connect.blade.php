@@ -9,26 +9,23 @@ use StreetMesh\Venue\Http\ConnectController;
 /*
  * A door, not a page inside the building.
  *
- * The host's auth layout: no sidebar, no navigation, nothing behind it — the
- * same frame its own login screen uses, because this is the same kind of
- * moment. It used to render into the application shell and compensate with a
- * narrow column, which meant somebody who had not arrived yet was shown the
- * furniture of a place they were not in.
+ * No sidebar, no navigation, nothing behind it. It used to render into the
+ * application shell and compensate with a narrow column, which meant somebody
+ * who had not arrived yet was shown the furniture of a place they were not in.
+ *
+ * Its own frame rather than the host's auth layout, which it borrowed for a
+ * while on the grounds that both are a form on an empty page. They are not the
+ * same moment: that one signs you in to this server, this one takes a name
+ * another server issued. Sharing a frame made the venue's door look like a
+ * login screen, which is the exact confusion the whole /connect path exists to
+ * avoid.
  *
  * Named rather than assumed. A package cannot draw its own chrome, and saying
  * which frame it wants is the contract — see the stub in tests/fixtures.
  */
-new #[Layout('layouts::auth')] #[Title('Connect')] class extends Component
+new #[Layout('layouts::door')] #[Title('Connect')] class extends Component
 {
     public string $handle = '';
-
-    /**
-     * @return array<int, string>
-     */
-    public function asking(): array
-    {
-        return ConnectController::asking();
-    }
 
     /**
      * The address of whoever is signed in here, or none.
@@ -51,14 +48,44 @@ new #[Layout('layouts::auth')] #[Title('Connect')] class extends Component
 
         return (string) (app(Identities::class)->forUser($user)?->handle ?? '');
     }
+
+    /**
+     * Where to send somebody who has no address yet, or nowhere.
+     *
+     * A venue houses nobody, so the only honest answer to "I do not have one of
+     * those" is the name of a server that does. Which one is the operator's,
+     * and a venue that names none simply does not make the offer.
+     *
+     * Nowhere, too, for somebody already signed in here: a server can be both a
+     * domicile and a venue, and telling a resident of this one to go and get an
+     * account is telling them to do what they have already done.
+     */
+    public function elsewhere(): string
+    {
+        if ($this->mine() !== '') {
+            return '';
+        }
+
+        $domicile = trim((string) config('streetmesh.venue.domicile', ''));
+
+        return $domicile === '' ? '' : 'https://'.$domicile.'/register';
+    }
 };?>
 
 {{--
-    The layout centres this and gives it a width, the way it does for a login
-    form. One field, one decision, nothing to scan.
+    The layout gives this a column and a width. One field, one decision,
+    nothing to scan.
 --}}
 <div class="flex w-full flex-col gap-6">
-    <div class="flex flex-col gap-2 text-center">
+    {{--
+        Ranged left, not centred.
+
+        Centred text is what you do to a card floating in the middle of a
+        screen. In a column with a form under it, every line starting at the
+        same place as the field is the thing that makes it read as one form
+        rather than a title and then some furniture.
+    --}}
+    <div class="flex flex-col gap-2">
         <flux:heading size="xl">{{ __('Connect') }}</flux:heading>
         <flux:text>{{ __('Sign in with your StreetMesh account.') }}</flux:text>
     </div>
@@ -90,10 +117,20 @@ new #[Layout('layouts::auth')] #[Title('Connect')] class extends Component
             --}}
             <flux:label class="sr-only" for="handle">{{ __('Your address') }}</flux:label>
 
+            {{--
+                A house, inset in the field.
+
+                The one thing this box wants is the address of the server
+                somebody lives at, and the icon says "home" before the
+                placeholder has to spell it out — which matters most to the
+                person who has never seen a handle-shaped address before and is
+                deciding what kind of thing is being asked for.
+            --}}
             <flux:input
                 id="handle"
                 name="handle"
-                placeholder="alice.example.com"
+                icon="home"
+                placeholder="username.stme.sh"
                 :value="old('handle', $this->mine())"
                 autofocus
                 autocomplete="username"
@@ -113,21 +150,23 @@ new #[Layout('layouts::auth')] #[Title('Connect')] class extends Component
         </flux:button>
     </form>
 
-    @if ($this->asking() !== [])
+    @if ($this->elsewhere() !== '')
         {{--
-            Said here as well as on their own server's consent screen. Somebody
-            deciding whether to type their address deserves to know what typing
-            it leads to, before they leave this page.
+            The other way in, for somebody who has nothing to type.
+
+            Outside the form on purpose — it is a link, not a second thing the
+            form can do, and a button inside a form is one stray `type` away
+            from submitting it.
+
+            Separated and worded as a question, because these two are not a
+            pair of equal choices: almost everybody here has an address and
+            wants the field. This is for the person who does not, and it should
+            be findable without competing with the thing above it.
         --}}
-        <flux:callout icon="key">
-            <flux:callout.heading>{{ __('This venue will ask permission to') }}</flux:callout.heading>
-            <flux:callout.text>
-                <ul class="list-disc ps-4">
-                    @foreach ($this->asking() as $sentence)
-                        <li>{{ $sentence }}</li>
-                    @endforeach
-                </ul>
-            </flux:callout.text>
-        </flux:callout>
+        <flux:separator :text="__('No address yet?')" />
+
+        <flux:button :href="$this->elsewhere()" class="w-full">
+            {{ __('Create an account') }}
+        </flux:button>
     @endif
 </div>

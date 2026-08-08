@@ -188,6 +188,57 @@ class VenueTest extends TestCase
             ->assertSee('value=""', escape: false);
     }
 
+    /**
+     * A venue houses nobody, so the only honest answer to somebody with no
+     * address is the name of a server that does.
+     */
+    public function test_the_door_says_where_to_get_an_address(): void
+    {
+        config()->set('streetmesh.venue.domicile', 'stme.sh');
+
+        $this->get('/connect')
+            ->assertOk()
+            ->assertSee('No address yet?')
+            ->assertSee('Create an account')
+            ->assertSee('https://stme.sh/register', escape: false);
+    }
+
+    /**
+     * A recommendation, and one an operator can decline to make.
+     */
+    public function test_a_venue_that_names_no_domicile_makes_no_offer(): void
+    {
+        config()->set('streetmesh.venue.domicile', null);
+
+        $this->get('/connect')
+            ->assertOk()
+            ->assertSee('Continue')
+            ->assertDontSee('Create an account');
+    }
+
+    /**
+     * A server can be both a domicile and a venue. Telling somebody who lives
+     * here to go and get an account is telling them to do what they have done.
+     */
+    public function test_a_resident_is_not_told_to_go_and_get_an_account(): void
+    {
+        config()->set('streetmesh.venue.domicile', 'stme.sh');
+
+        $resident = Resident::create([
+            'name' => 'Alice',
+            'email' => 'alice@games.test',
+            'password' => 'irrelevant',
+        ]);
+
+        $identity = app(Identities::class)->forResident('alice.games.test')['identity'];
+        $identity->owner()->associate($resident)->save();
+
+        $this->actingAs($resident)
+            ->get('/connect')
+            ->assertOk()
+            ->assertDontSee('Create an account');
+    }
+
     public function test_the_published_redirect_is_the_route_that_receives_it(): void
     {
         /*

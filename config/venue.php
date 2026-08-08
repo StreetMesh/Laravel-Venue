@@ -93,6 +93,30 @@ return [
 
     /*
      |--------------------------------------------------------------------------
+     | Where to send somebody who has no address yet
+     |--------------------------------------------------------------------------
+     |
+     | A venue cannot house anybody. Arriving here means holding a name that
+     | some domicile issued, so a visitor who has never had one is standing at a
+     | door they cannot open, and the only useful thing to tell them is where to
+     | go and get one.
+     |
+     | Which domicile is the operator's call, and it is a recommendation rather
+     | than a rule — an address from anywhere works. This is only the answer to
+     | "I do not have one of those".
+     |
+     | A hostname, not a URL, because it is the same shape as the address being
+     | asked for in the field above it.
+     |
+     | Null takes the offer off the screen, for a venue whose visitors already
+     | live somewhere.
+     |
+     */
+
+    'domicile' => env('STREETMESH_VENUE_DOMICILE', 'stme.sh'),
+
+    /*
+     |--------------------------------------------------------------------------
      | Building this server's hub
      |--------------------------------------------------------------------------
      |
