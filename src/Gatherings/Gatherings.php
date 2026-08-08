@@ -101,7 +101,25 @@ final class Gatherings
             throw new RuntimeException('That is over.');
         }
 
-        return $this->tickets->mint($visitor, $gathering->room(), $seat->seat);
+        return $this->tickets->mint($visitor, $gathering->room(), $seat->seat, $this->filled($gathering));
+    }
+
+    /**
+     * Which seats somebody is sitting in, whether or not they are looking.
+     *
+     * A seat outlives a connection on purpose — that is what lets somebody come
+     * back to their own game — and this is the answer the realtime half cannot
+     * work out for itself, because all it can see is who is online right now.
+     *
+     * @return array<int, string>
+     */
+    private function filled(Gathering $gathering): array
+    {
+        return Seat::query()
+            ->where('gathering_id', $gathering->id)
+            ->whereNull('left_at')
+            ->pluck('seat')
+            ->all();
     }
 
     /**
@@ -123,17 +141,6 @@ final class Gatherings
     }
 
     /**
-     * Over, and what happened.
-     *
-     * The outcome is the experience's to describe — this holds no opinion about
-     * what a result looks like — but it is kept here, because the hub does not
-     * keep anything. A room is memory and is gone when the last person leaves,
-     * so a venue that recorded only "concluded" could never show a finished
-     * gathering to anybody who came back to look at it.
-     *
-     * @param  array<string, mixed>  $outcome
-     */
-    /**
      * Tables somebody opened and nobody came to.
      *
      * One seat, because two is a game — whether or not a move was made, two
@@ -151,6 +158,17 @@ final class Gatherings
             ->get();
     }
 
+    /**
+     * Over, and what happened.
+     *
+     * The outcome is the experience's to describe — this holds no opinion about
+     * what a result looks like — but it is kept here, because the hub does not
+     * keep anything. A room is memory and is gone when the last person leaves,
+     * so a venue that recorded only "concluded" could never show a finished
+     * gathering to anybody who came back to look at it.
+     *
+     * @param  array<string, mixed>  $outcome
+     */
     public function conclude(Gathering $gathering, array $outcome = []): Gathering
     {
         $gathering->update([
