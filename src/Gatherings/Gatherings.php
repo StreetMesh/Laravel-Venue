@@ -7,6 +7,8 @@ use Illuminate\Support\Str;
 use RuntimeException;
 use StreetMesh\Protocol\Laravel\Permissions\Delegation;
 use StreetMesh\Protocol\Laravel\Permissions\Tickets;
+use StreetMesh\Venue\Experiences\Audience;
+use StreetMesh\Venue\Experiences\Experiences;
 
 /**
  * Opening something, seating people at it, and letting them in.
@@ -22,7 +24,10 @@ use StreetMesh\Protocol\Laravel\Permissions\Tickets;
  */
 final class Gatherings
 {
-    public function __construct(private readonly Tickets $tickets) {}
+    public function __construct(
+        private readonly Tickets $tickets,
+        private readonly Experiences $experiences,
+    ) {}
 
     public function open(string $experience): Gathering
     {
@@ -84,24 +89,58 @@ final class Gatherings
     }
 
     /**
-     * A way in, for somebody who is already known to belong here.
+     * A way in, for somebody with a place here — or somebody just looking.
      *
      * The ticket is minted from the seat rather than from the request, so what
      * it says is what this venue decided rather than what a browser asked for.
+     *
+     * Nobody is null: a passer-by who has never been here, following a link to
+     * a game. Whether that is somebody to let in is the experience's answer
+     * rather than this one's, and it is a question about privacy — so it is
+     * asked, per gathering, rather than assumed either way.
      */
-    public function admit(Gathering $gathering, Delegation $visitor): string
+    public function admit(Gathering $gathering, ?Delegation $visitor): string
     {
-        $seat = $this->seatOf($gathering, $visitor);
-
-        if ($seat === null || $seat->left_at !== null) {
-            throw new RuntimeException('That visitor has no place there.');
-        }
-
         if (! $gathering->isOpen()) {
             throw new RuntimeException('That is over.');
         }
 
-        return $this->tickets->mint($visitor, $gathering->room(), $seat->seat, $this->filled($gathering));
+        $seat = $visitor === null ? null : $this->seatOf($gathering, $visitor);
+        $seated = $seat !== null && $seat->left_at === null;
+
+        if ($seated) {
+            return $this->tickets->mint($visitor, $gathering->room(), $seat->seat, $this->filled($gathering));
+        }
+
+        if (! $this->audienceFor($gathering)->admits(arrived: $visitor !== null, seated: false)) {
+            throw new RuntimeException('That visitor has no place there.');
+        }
+
+        /*
+         * A watcher, in no seat.
+         *
+         * Named when the venue knows who they are and anonymous when it does
+         * not, because a stranger watching a public game has told this server
+         * nothing about themselves and inventing an identity for them would be
+         * the opposite of what the setting they are relying on says.
+         */
+        return $visitor === null
+            ? $this->tickets->watcher($gathering->room(), $this->filled($gathering))
+            : $this->tickets->mint($visitor, $gathering->room(), '', $this->filled($gathering));
+    }
+
+    /**
+     * Who this gathering is open to, as its own experience sees it.
+     *
+     * An experience nothing installed no longer answers for — the package was
+     * removed, or was never here — and there is nobody left to ask whether its
+     * gatherings are private. The only safe reading of silence is the closed
+     * one: the people already seated, and nobody else.
+     */
+    private function audienceFor(Gathering $gathering): Audience
+    {
+        return $this->experiences->get($gathering->experience)?->audience($gathering)
+            ?? Audience::Players;
     }
 
     /**

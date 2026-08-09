@@ -43,11 +43,17 @@ Route::livewire('experiences', 'venue::experiences')
 /*
  * A way in to something happening here.
  *
- * Behind the door, because a ticket names a visitor and there is no visitor to
- * name until somebody has arrived. What it hands back is checked by the hub
- * against the venue's signature, so this endpoint decides and the hub only
- * verifies.
+ * Not behind the door, and it used to be. A ticket names a visitor, so this
+ * looked like something only an arrival could ask for — but watching is not
+ * arriving, and a gathering whose experience says anybody may look at it has to
+ * be lookable at by somebody who has never been here. Behind `visitor`, the
+ * middleware met every passer-by with a form asking them to name their own
+ * server, in order to watch a game of chess.
+ *
+ * Nothing is decided here. Who may be let in is the experience's answer about
+ * its own gathering, and what this hands back is checked by the hub against the
+ * venue's signature — so a ticket this should not have issued is one the hub
+ * still cannot be talked out of checking.
  */
 Route::post('gatherings/{key}/ticket', TicketController::class)
-    ->middleware('visitor')
     ->name('venue.ticket');

@@ -2,6 +2,8 @@
 
 namespace StreetMesh\Venue\Experiences;
 
+use StreetMesh\Venue\Gatherings\Gathering;
+
 /**
  * Something a venue hosts.
  *
@@ -50,6 +52,45 @@ interface Experience
      * reads better when each entry says what it actually is.
      */
     public function action(): ?string;
+
+    /**
+     * A second way in, for somebody who only wants to look.
+     *
+     * The primary one asks something of people: `route()` is where you go to
+     * take part, and taking part means arriving with a name another server
+     * issued. That is the right toll for playing and much too high for
+     * watching — a stranger who follows a link to see what is on should not
+     * meet a form asking them to name their own server first.
+     *
+     * So an experience with things worth watching says where to look. The route
+     * named here is expected to be readable by anybody; nothing enforces that,
+     * because an experience that put its own door in front of it would only be
+     * describing a second front entrance, which is its business.
+     *
+     * Null is the ordinary answer. Most things are not a spectator sport, and
+     * one way in is enough.
+     *
+     * @return array{label: string, route: string}|null
+     */
+    public function watching(): ?array;
+
+    /**
+     * Who may watch this one while it is happening.
+     *
+     * Asked per gathering rather than per experience, because privacy is not a
+     * property of the kind of thing: two games at the same venue may reasonably
+     * differ, and an experience that grows a setting for it has somewhere to
+     * put the answer.
+     *
+     * Required, with no default anywhere. A venue that assumed one would be
+     * deciding on somebody else's behalf how visible their gathering is, and
+     * the safe assumption and the useful one point in opposite directions — so
+     * an experience has to say. Saying so is one line.
+     *
+     * This governs looking, never doing. Taking a chair is a different question
+     * with a different answer, asked somewhere else.
+     */
+    public function audience(Gathering $gathering): Audience;
 
     /**
      * What a visitor has to agree to before this can do its job.

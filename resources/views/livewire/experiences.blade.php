@@ -47,10 +47,28 @@ new #[Title('Experiences')] class extends Component
                         <flux:text class="text-sm">{{ $experience->description() }}</flux:text>
                     </div>
 
-                    <div class="mt-auto">
+                    {{--
+                        Two ways in, where an experience offers them.
+
+                        The primary one asks something: taking part means
+                        arriving with a name another server issued. The second
+                        asks nothing, because looking should not cost what
+                        playing costs — a stranger wanting to see what is on met
+                        a form asking them to name their own server first, which
+                        is a toll nobody pays to look at a chessboard.
+                    --}}
+                    @php($watching = $experience->watching())
+
+                    <div class="mt-auto flex gap-2">
                         <flux:button :href="route($experience->route())" size="sm" variant="primary" wire:navigate>
                             {{ $experience->action() ?? __('Launch') }}
                         </flux:button>
+
+                        @if ($watching !== null)
+                            <flux:button :href="route($watching['route'])" size="sm" wire:navigate>
+                                {{ __($watching['label']) }}
+                            </flux:button>
+                        @endif
                     </div>
                 </flux:card>
             @endforeach

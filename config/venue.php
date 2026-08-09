@@ -117,6 +117,30 @@ return [
 
     /*
      |--------------------------------------------------------------------------
+     | What this venue is called, in pictures
+     |--------------------------------------------------------------------------
+     |
+     | A venue is the half of a server that strangers meet, and often the half
+     | with a name of its own: Tabletop runs on StreetMesh the way a shop stands
+     | on a high street. A domicile in the same container sets its own, so the
+     | server answering for somebody's records is not wearing the sign over the
+     | door of the games room.
+     |
+     | A public path with no variant or extension on it. A mark that carries its
+     | own ground needs a second drawing for a dark surface, and every pack built
+     | for this server puts `-small.svg` and `-dark-small.svg` beside each other
+     | under one name — so naming the pair is enough, and there are not two paths
+     | here that can disagree with each other.
+     |
+     | Unset is the server's own mark, which is the right answer for a venue
+     | nobody has branded separately.
+     |
+     */
+
+    'mark' => env('STREETMESH_VENUE_MARK'),
+
+    /*
+     |--------------------------------------------------------------------------
      | Building this server's hub
      |--------------------------------------------------------------------------
      |

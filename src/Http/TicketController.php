@@ -31,11 +31,15 @@ final class TicketController
 
     public function __invoke(Request $request, string $key): JsonResponse
     {
+        /*
+         * Null is an ordinary answer here, not a refusal.
+         *
+         * Somebody may be nobody in particular: a passer-by who followed a link
+         * to a game and has never been to this venue. Whether that is somebody
+         * to let in is the experience's decision about its own gathering, so it
+         * is made there rather than turned away at this door.
+         */
         $visitor = $this->visitors->current($request);
-
-        if ($visitor === null) {
-            return response()->json(['error' => 'Nobody is visiting.'], 401);
-        }
 
         $gathering = Gathering::query()->keyed($key)->first();
 

@@ -191,6 +191,19 @@ final class BuildHubTest extends Plain
                 return null;
             }
 
+            /**
+             * @return array{label: string, route: string}|null
+             */
+            public function watching(): ?array
+            {
+                return null;
+            }
+
+            public function audience(\StreetMesh\Venue\Gatherings\Gathering $gathering): \StreetMesh\Venue\Experiences\Audience
+            {
+                return \StreetMesh\Venue\Experiences\Audience::Anybody;
+            }
+
             public function scopes(): array
             {
                 return [];

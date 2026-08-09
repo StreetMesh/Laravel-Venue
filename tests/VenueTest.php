@@ -568,6 +568,19 @@ class VenueTest extends TestCase
             }
 
             /**
+             * @return array{label: string, route: string}|null
+             */
+            public function watching(): ?array
+            {
+                return null;
+            }
+
+            public function audience(\StreetMesh\Venue\Gatherings\Gathering $gathering): \StreetMesh\Venue\Experiences\Audience
+            {
+                return \StreetMesh\Venue\Experiences\Audience::Anybody;
+            }
+
+            /**
              * @return array<int, string>
              */
             public function scopes(): array
@@ -633,6 +646,19 @@ class VenueTest extends TestCase
             public function action(): ?string
             {
                 return null;
+            }
+
+            /**
+             * @return array{label: string, route: string}|null
+             */
+            public function watching(): ?array
+            {
+                return null;
+            }
+
+            public function audience(\StreetMesh\Venue\Gatherings\Gathering $gathering): \StreetMesh\Venue\Experiences\Audience
+            {
+                return \StreetMesh\Venue\Experiences\Audience::Anybody;
             }
 
             /**

@@ -2,7 +2,9 @@
 
 namespace StreetMesh\Venue;
 
+use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Protocol\Laravel\Capabilities\Capability;
+use StreetMesh\Protocol\Laravel\Capabilities\Mark;
 use StreetMesh\Protocol\Laravel\Capabilities\Widget;
 
 /**
@@ -100,5 +102,26 @@ final class VenueCapability implements Capability
         return [
             ['label' => 'Experiences', 'route' => 'venue.experiences'],
         ];
+    }
+
+    /**
+     * What this venue is called, in pictures.
+     *
+     * The venue is the half of a server strangers meet, and the half most
+     * likely to be a thing with a name of its own — Tabletop runs on StreetMesh
+     * the way a shop stands on a high street. A domicile in the same container
+     * is not that thing and must not wear its mark.
+     *
+     * Falls back to the server's own, so a venue nobody has branded looks the
+     * way it always did.
+     *
+     * `?:` rather than a default argument, because the key is always present —
+     * the config file declares it, unset or not. `config($key, $default)` never
+     * reaches its default here, and an unset variable drew a mark called
+     * `-small.svg`.
+     */
+    public function mark(): Mark
+    {
+        return new Mark((string) (config('streetmesh.venue.mark') ?: Capabilities::OWN_MARK));
     }
 }

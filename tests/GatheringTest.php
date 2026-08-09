@@ -5,6 +5,9 @@ namespace StreetMesh\Venue\Tests;
 use RuntimeException;
 use StreetMesh\Protocol\Laravel\Permissions\Delegation;
 use StreetMesh\Protocol\P256;
+use StreetMesh\Venue\Experiences\Audience;
+use StreetMesh\Venue\Experiences\Experience;
+use StreetMesh\Venue\Experiences\Experiences;
 use StreetMesh\Venue\Gatherings\Gathering;
 use StreetMesh\Venue\Gatherings\Gatherings;
 use StreetMesh\Venue\Visitors;
@@ -256,11 +259,151 @@ class GatheringTest extends TestCase
             ->assertJsonPath('experience', self::CHESS);
     }
 
+    /**
+     * Silence is read as "no".
+     *
+     * An experience nothing installed cannot be asked who may watch, and the
+     * only safe reading of that is the closed one. This is what a package
+     * having been removed looks like, and it must not turn every gathering it
+     * left behind into a public one.
+     */
     public function test_nobody_visiting_is_handed_nothing(): void
     {
         $gathering = $this->gatherings()->open(self::CHESS);
 
-        $this->post(route('venue.ticket', $gathering->key))->assertRedirect(route('venue.connect'));
+        $this->post(route('venue.ticket', $gathering->key))->assertForbidden();
+    }
+
+    /**
+     * A passer-by, at something whose experience says anybody may look.
+     *
+     * No door, and nothing pressed first: they followed a link to a game and
+     * they are watching it. The ticket seats them nowhere, which is what keeps
+     * this from being a way to join in.
+     */
+    public function test_a_stranger_may_watch_what_is_open_to_anybody(): void
+    {
+        $gathering = $this->openTo(Audience::Anybody);
+
+        $response = $this->post(route('venue.ticket', $gathering->key))
+            ->assertOk()
+            ->assertJsonPath('room', $gathering->room());
+
+        $this->assertSame('', $this->claims($response->json('ticket'))['seat']);
+    }
+
+    /**
+     * And the same gathering, kept to the people at it.
+     */
+    public function test_a_stranger_is_refused_what_is_kept_to_its_players(): void
+    {
+        $gathering = $this->openTo(Audience::Players);
+
+        $this->post(route('venue.ticket', $gathering->key))->assertForbidden();
+    }
+
+    /**
+     * Somebody who came through the door but has no place at this table.
+     *
+     * Watching under their own name rather than anonymously: the venue knows
+     * who they are, and saying otherwise would be inventing a stranger.
+     */
+    public function test_a_visitor_watching_is_named(): void
+    {
+        $gathering = $this->openTo(Audience::Anybody);
+
+        session([Visitors::SESSION_KEY => $this->visitor('carol')->id]);
+
+        $claims = $this->claims(
+            $this->post(route('venue.ticket', $gathering->key))->assertOk()->json('ticket')
+        );
+
+        $this->assertSame('', $claims['seat']);
+        $this->assertStringContainsString('carol', $claims['name']);
+    }
+
+    /**
+     * Open something whose experience gives a particular answer about who may
+     * watch it.
+     */
+    private function openTo(Audience $audience): Gathering
+    {
+        app(Experiences::class)->register(new class($audience) implements Experience
+        {
+            public function __construct(private readonly Audience $who) {}
+
+            public function audience(Gathering $gathering): Audience
+            {
+                return $this->who;
+            }
+
+            /**
+             * @return array{label: string, route: string}|null
+             */
+            public function watching(): ?array
+            {
+                return null;
+            }
+
+            public function name(): string
+            {
+                return 'com.example.watched';
+            }
+
+            public function title(): string
+            {
+                return 'Watched';
+            }
+
+            public function description(): string
+            {
+                return 'Something to look at';
+            }
+
+            public function icon(): string
+            {
+                return 'eye';
+            }
+
+            public function route(): string
+            {
+                return 'venue.experiences';
+            }
+
+            public function action(): ?string
+            {
+                return null;
+            }
+
+            /**
+             * @return array<int, string>
+             */
+            public function scopes(): array
+            {
+                return [];
+            }
+
+            public function room(): ?string
+            {
+                return null;
+            }
+        });
+
+        return $this->gatherings()->open('com.example.watched');
+    }
+
+    /**
+     * What a ticket says, without checking the signature — that is the hub's
+     * job, and it has its own checks for it.
+     *
+     * @return array<string, mixed>
+     */
+    private function claims(string $ticket): array
+    {
+        return (array) json_decode(
+            (string) base64_decode(strtr(explode('.', $ticket)[1], '-_', '+/'), true),
+            true,
+        );
     }
 
     /**
