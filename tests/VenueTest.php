@@ -239,6 +239,33 @@ class VenueTest extends TestCase
             ->assertDontSee('Create an account');
     }
 
+    /**
+     * What this venue looks like, at the address every venue publishes it at.
+     *
+     * A domicile that has never heard of this server builds this from the
+     * hostname it already has, so there is nothing to negotiate and nothing to
+     * validate. Outside the door, because whoever is asking has never been here
+     * and may well decide not to come.
+     */
+    public function test_a_venue_publishes_its_mark_where_anybody_can_find_it(): void
+    {
+        config()->set('streetmesh.venue.mark', 'brand/tabletop-mark');
+
+        $this->get('/mark.svg')->assertRedirectContains('brand/tabletop-mark-small.svg');
+        $this->get('/mark-dark.svg')->assertRedirectContains('brand/tabletop-mark-dark-small.svg');
+    }
+
+    /**
+     * And a venue nobody has branded publishes one too, so the convention holds
+     * for every venue rather than only the dressed-up ones.
+     */
+    public function test_an_unbranded_venue_publishes_the_servers_own_mark(): void
+    {
+        config()->set('streetmesh.venue.mark', null);
+
+        $this->get('/mark.svg')->assertRedirectContains('streetmesh-mark-small.svg');
+    }
+
     public function test_the_published_redirect_is_the_route_that_receives_it(): void
     {
         /*

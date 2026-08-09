@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Venue\Http\ConnectController;
 use StreetMesh\Venue\Http\TicketController;
 
@@ -12,6 +13,28 @@ use StreetMesh\Venue\Http\TicketController;
  * somewhere else, a trip to that server to be asked, and a way back.
  */
 Route::livewire('connect', 'venue::connect')->name('venue.connect');
+
+/*
+ * What this venue looks like, at the address every venue publishes it at.
+ *
+ * A domicile that has never heard of this server needs a picture of it for one
+ * screen: the moment somebody is asked whether to let it in. It builds this
+ * address from the hostname it already has, so there is nothing to negotiate
+ * and nothing to validate — the only party who can put a picture here is the
+ * one the picture is about, and that is the whole of why it is worth showing.
+ *
+ * A redirect rather than a copy. The mark is already a public asset and an
+ * operator may point the configuration at any of them; serving the bytes twice
+ * would be a second place for it to go stale.
+ *
+ * Outside the door on purpose. A permission screen is being read by somebody
+ * who has never been here and may well decide not to come.
+ */
+Route::get('mark.svg', fn () => redirect(asset(app(Capabilities::class)->mark('venue')->light())))
+    ->name('venue.mark');
+
+Route::get('mark-dark.svg', fn () => redirect(asset(app(Capabilities::class)->mark('venue')->dark())))
+    ->name('venue.mark.dark');
 
 Route::post('connect', [ConnectController::class, 'start'])->name('venue.connect.start');
 
