@@ -210,6 +210,17 @@ return [
 
         'margin' => 40,
 
+        /*
+         | And how far from it on a phone.
+         |
+         | Closer, because the badge anchors everything to its left and a narrow
+         | screen has no width to waste on a corner. Every millimetre here is a
+         | millimetre a face can use.
+         |
+         */
+
+        'margin_narrow' => 20,
+
         /** The popover, on a screen with room for one. */
         'width' => 380,
         'height' => 560,

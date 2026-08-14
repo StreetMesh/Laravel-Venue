@@ -301,17 +301,28 @@ final class Parties
      */
     private function join(Party $party, Delegation $visitor): Member
     {
-        $existing = $this->memberOf($party, $visitor);
+        /*
+         * Anybody who has ever been in this party, including somebody who left.
+         *
+         * A place is kept rather than deleted — that is what `left_at` is for —
+         * and the table allows one row per person per party. So looking only at
+         * who is *currently* in it found nothing for a returning member and
+         * tried to write a second row, which the database refused. Leaving a
+         * party was a one-way door, and the refusal named a constraint rather
+         * than saying so.
+         */
+        $existing = Member::query()
+            ->where('party_id', $party->id)
+            ->whereHas('delegation', fn ($holder) => $holder->where('did', $visitor->did))
+            ->first();
 
         if ($existing !== null) {
             /*
-             * Point the membership at the permission we can actually use.
-             * Coming back through the door mints a fresh delegation, and the
-             * one they joined under may since have expired.
+             * Back in, under whichever permission they are holding now. Coming
+             * through the door again mints a fresh delegation, and the one they
+             * first joined under may since have expired.
              */
-            if ($existing->delegation_id !== $visitor->id) {
-                $existing->update(['delegation_id' => $visitor->id, 'left_at' => null]);
-            }
+            $existing->update(['delegation_id' => $visitor->id, 'left_at' => null]);
 
             return $existing;
         }

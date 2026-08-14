@@ -96,8 +96,57 @@ new class extends Component
     }
 };?>
 
-<div class="flex h-full flex-col gap-3" wire:poll.2s>
-    <div class="flex-1 overflow-y-auto">
+{{--
+    Padded here rather than by whatever holds it.
+
+    The pane around this is a flex column with no padding of its own, so that
+    the conversation can fill it and keep its composer at the foot. That leaves
+    the inset to this — and putting it on the parts rather than the whole is
+    what keeps the scrollbar against the panel's edge while the words stay in
+    from it.
+--}}
+<div class="flex h-full flex-col" wire:poll.2s>
+    {{--
+        Opened at the end, and kept there.
+
+        A conversation is read from the bottom: the newest line is the one you
+        came for, and starting at the top of a long one means scrolling past
+        everything you have already seen.
+
+        Three moments need it and they are not the same. The first render, which
+        is `x-init`. Anything arriving afterwards, which is the observer — a
+        poll morphs new lines in without Alpine being told. And becoming
+        visible, which is the tab switch: a hidden pane has no height, so
+        whatever it did about scrolling while it was hidden was done to a box
+        of nothing.
+
+        `stick` is what keeps that from being rude. Somebody who has scrolled up
+        to read is not dragged back down every two seconds; the moment they
+        return to the bottom, following resumes.
+    --}}
+    <div
+        class="min-h-0 flex-1 overflow-y-auto px-3 py-2"
+        x-data="{
+            stick: true,
+
+            end () {
+                this.$el.scrollTop = this.$el.scrollHeight
+            },
+
+            follow () {
+                if (this.stick) {
+                    this.$nextTick(() => this.end())
+                }
+            },
+        }"
+        x-init="
+            $nextTick(() => end())
+
+            new MutationObserver(() => follow()).observe($el, { childList: true, subtree: true })
+        "
+        x-on:scroll="stick = $el.scrollHeight - $el.scrollTop - $el.clientHeight < 40"
+        x-on:comms-shown.window="$nextTick(() => end())"
+    >
         @forelse ($this->messages as $message)
             <div class="flex flex-col gap-0.5 py-1.5" wire:key="said-{{ $message->id }}">
                 <flux:text size="sm" class="font-medium">{{ $message->name }}</flux:text>
@@ -109,6 +158,13 @@ new class extends Component
             </flux:text>
         @endforelse
     </div>
+
+    @error('saying')
+        {{-- A refusal is a sentence somebody should read — too long to send, or
+             a party they are no longer in. It was being set and never
+             rendered, which is the same as being swallowed. --}}
+        <flux:text class="shrink-0 px-3 pb-1 text-red-600 dark:text-red-400">{{ $message }}</flux:text>
+    @enderror
 
     @if ($this->readable)
         {{--
@@ -163,7 +219,7 @@ new class extends Component
                 },
             }"
             x-on:submit.prevent="send()"
-            class="relative rounded-3xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700"
+            class="relative mx-3 mb-3 shrink-0 rounded-3xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700"
         >
             <textarea
                 x-ref="box"

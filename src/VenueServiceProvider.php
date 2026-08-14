@@ -2,6 +2,9 @@
 
 namespace StreetMesh\Venue;
 
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
+use Illuminate\Foundation\Http\Middleware\TrimStrings;
+use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 use RuntimeException;
@@ -41,6 +44,7 @@ class VenueServiceProvider extends ServiceProvider
         $this->app->make(Capabilities::class)->register(new VenueCapability);
 
         $this->refuseUnlessEquipped();
+        $this->protectSessionDescriptions();
 
         if ($this->app->runningInConsole()) {
             $this->commands([BuildHub::class, DeployHub::class, TidyGatherings::class, TidyParties::class]);
@@ -134,6 +138,31 @@ class VenueServiceProvider extends ServiceProvider
             ->middleware('web')
             ->group(__DIR__.'/../routes/web.php');
 
+    }
+
+    /**
+     * Keep the framework's tidying away from a session description.
+     *
+     * Laravel blanks and trims request input as a kindness to HTML forms. An
+     * SDP is not a form field: it is a line-oriented document whose every line
+     * ends in CRLF, including the last one. Trimming takes that terminator off
+     * and what arrives is a document the far side refuses with "Invalid SDP
+     * line" — after which every ICE candidate for it fails with "the remote
+     * description was null", because there is no description to attach them to.
+     *
+     * The same guarantee `Protocol-Laravel` already gives signed documents, and
+     * for the same reason: bytes that mean something to somebody else must
+     * arrive as they were sent. It is written out again here rather than shared
+     * because the paths are the venue's own, and because a signalling route is
+     * not a signed one — the reason they need it is different even though the
+     * damage is identical.
+     */
+    private function protectSessionDescriptions(): void
+    {
+        $carriesDescription = static fn (Request $request): bool => $request->is('parties/*/signals');
+
+        ConvertEmptyStringsToNull::skipWhen($carriesDescription);
+        TrimStrings::skipWhen($carriesDescription);
     }
 
     /**

@@ -55,6 +55,8 @@ export default function peer({ ice, polite, name, send, onTrack, onStatus }) {
      * whole of keeping a connection current.
      */
     pc.addEventListener('negotiationneeded', async () => {
+        say(`${name}: negotiation needed (signalling ${pc.signalingState})`);
+
         try {
             offering = true;
 
@@ -148,7 +150,15 @@ export default function peer({ ice, polite, name, send, onTrack, onStatus }) {
                     outgoing.addTrack(track);
                     senders.set(kind, pc.addTrack(track, outgoing));
 
-                    say(`${name}: sending them ${kind}`);
+                    /*
+                     * The signalling state with it, because this is the moment
+                     * that decides whether anything follows. A connection still
+                     * holding an offer nobody answered is not `stable`, and the
+                     * browser will queue the renegotiation this add needs and
+                     * never run it — which looks exactly like a track that was
+                     * added and then ignored.
+                     */
+                    say(`${name}: sending them ${kind} (signalling ${pc.signalingState}, connection ${pc.connectionState})`);
 
                     continue;
                 }

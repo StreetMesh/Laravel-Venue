@@ -290,6 +290,53 @@ class PartyTest extends TestCase
         $this->assertSame($party->id, $this->parties()->partyOf($again)?->id);
     }
 
+    /**
+     * Leaving is not a one-way door.
+     *
+     * A place is kept rather than deleted — that is what `left_at` is for — and
+     * the table allows one row per person per party. Looking only at who is
+     * currently in it found nothing for somebody coming back and tried to write
+     * a second row, which the database refused: leaving a party you could see
+     * on screen meant never getting back into it, and the refusal named a
+     * constraint rather than saying so.
+     */
+    public function test_somebody_who_left_can_come_back(): void
+    {
+        $alice = $this->visitor();
+        $bob = $this->visitor('bob');
+
+        $party = $this->partyOf($alice, $bob);
+
+        $this->parties()->leave($party, $bob);
+        $this->assertNull($this->parties()->partyOf($bob));
+
+        /* The same trip through the door, which is the case that failed. */
+        $this->parties()->joinByCode((string) $party->code, $bob);
+
+        $this->assertSame($party->id, $this->parties()->partyOf($bob)?->id);
+        $this->assertSame(2, $this->parties()->present($party)->count());
+    }
+
+    /**
+     * And can come back tomorrow, holding a different permission.
+     */
+    public function test_somebody_who_left_can_come_back_under_a_new_permission(): void
+    {
+        $alice = $this->visitor();
+        $bob = $this->visitor('bob');
+
+        $party = $this->partyOf($alice, $bob);
+
+        $this->parties()->leave($party, $bob);
+
+        $again = $this->visitor('bob');
+
+        $this->parties()->joinByCode((string) $party->code, $again);
+
+        $this->assertSame($party->id, $this->parties()->partyOf($again)?->id);
+        $this->assertSame(2, $this->parties()->present($party)->count());
+    }
+
     public function test_the_last_person_out_breaks_it_up(): void
     {
         $alice = $this->visitor();

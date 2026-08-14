@@ -60,19 +60,35 @@
             padding-bottom: {{ $lift }}px;
         }
 
+        /*
+            How big a face is, set by the page that draws them.
+
+            Fixed until a party outgrows the screen it is on, and then smaller —
+            four circles and a badge need more width than the narrowest phone
+            has. Every measurement below is expressed against it so the whole
+            circle scales together rather than a 52px face wearing a 25px band.
+        */
+        :root { --face: {{ $badge }}px; }
+
         .face {
             position: relative;
-            width: {{ $badge }}px;
-            height: {{ $badge }}px;
-            flex: 0 0 {{ $badge }}px;
+            width: var(--face);
+            height: var(--face);
+            flex: 0 0 var(--face);
             border-radius: 9999px;
             overflow: hidden;
             background: #27272a;
 
-            /* The same room the badge has around itself, so one face occupies
-               exactly one badge's worth of the row — and so the shadow the host
-               draws has somewhere to fall. */
-            margin-left: {{ $pad }}px;
+            /*
+                The same gap the badge keeps from the face beside it.
+
+                The badge's circle floats half its frame's padding in from that
+                frame's edge, and this row sits flush against it — so half the
+                padding is what separates the last face from the badge, and it
+                has to be what separates the faces from each other too. A full
+                `pad` here made every gap in the row twice the one at the end.
+            */
+            margin-left: {{ $lift }}px;
         }
 
         .face video,
@@ -105,7 +121,7 @@
             align-items: center;
             justify-content: center;
             color: {{ $palette['paper'] }};
-            font: 600 {{ round($badge * 0.38) }}px/1 ui-sans-serif, system-ui, sans-serif;
+            font: 600 calc(var(--face) * 0.38)/1 ui-sans-serif, system-ui, sans-serif;
             background: linear-gradient(160deg, #3f3f46, {{ $palette['ink'] }});
         }
 
@@ -117,7 +133,7 @@
         .face .quiet {
             position: absolute;
             inset: auto 0 0 0;
-            height: {{ round($badge * 0.42) }}px;
+            height: calc(var(--face) * 0.42);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -125,7 +141,8 @@
             color: #fca5a5;
         }
 
-        .face .quiet svg { width: {{ round($badge * 0.22) }}px; height: {{ round($badge * 0.22) }}px; }
+        .face .quiet svg { width: calc(var(--face) * 0.22); height: calc(var(--face) * 0.22); }
+
     </style>
 </head>
 <body>

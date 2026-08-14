@@ -155,6 +155,10 @@ class CommsTest extends TestCase
     /**
      * A word you can say across a table. Being able to do that is the whole
      * reason it exists, so it has to be on the panel where the party is.
+     *
+     * It lives in the drawer, which is drawn shut rather than not drawn — the
+     * conversation is what the pane is for, and this is reference you read
+     * once.
      */
     public function test_a_party_shows_the_word_that_lets_somebody_in(): void
     {
@@ -164,7 +168,27 @@ class CommsTest extends TestCase
         $this->as($alice, 'panel')
             ->assertOk()
             ->assertSee($party->code)
-            ->assertSee('Leave the party');
+            ->assertSee('Show party details')
+            ->assertSee('Copy')
+            ->assertSee('Really leave?')
+            ->assertSee('Leave party');
+    }
+
+    /**
+     * The strip says how many people are in it without being opened.
+     *
+     * That is the whole question most of the time, and answering it in the one
+     * row that is always visible means the drawer stays shut.
+     */
+    public function test_the_party_strip_says_how_many_are_in_it(): void
+    {
+        $alice = $this->visitor();
+        $bob = $this->visitor('bob');
+
+        $party = $this->parties()->open($alice);
+        $this->parties()->accept($this->parties()->invite($party, $alice, (string) $bob->did), $bob);
+
+        $this->as($alice, 'panel')->assertOk()->assertSee('Party of 2');
     }
 
     /**

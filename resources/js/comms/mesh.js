@@ -34,7 +34,24 @@ const LOOKING = 1000
 
 export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, onTrouble }) {
     const connections = new Map()
-    const arriving = new Map()
+
+    /**
+     * Notes that arrived before the room mentioned who sent them.
+     *
+     * Both sides learn of each other from the same room state, but not at the
+     * same instant — and whoever is impolite offers the moment it hears. So an
+     * offer can be collected by a browser that has not yet built the connection
+     * it belongs to.
+     *
+     * These are kept rather than dropped, which is the whole of this fix. An
+     * offer is sent once and never repeated: discarding one leaves the sender
+     * holding a local offer nobody will ever answer, and a connection stuck
+     * there is not `stable` — so every later attempt to add a camera queues a
+     * renegotiation the browser will never run. The symptom is a track that is
+     * added, reported as sent, and then silently ignored for the life of the
+     * page.
+     */
+    const waiting = new Map()
 
     let room = null
     let post = null
@@ -42,16 +59,74 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
     let ice = []
     let stopped = false
 
-    /** Who is here, as the thing drawing wants it. */
+    /**
+     * Getting back in, when the room goes away.
+     *
+     * A laptop that sleeps takes the websocket with it, and the venue is
+     * briefly unreachable while everything else wakes up — so both joining and
+     * staying joined can fail for reasons that have nothing to do with anybody.
+     * Trying once and giving up means a party that quietly stops existing after
+     * lunch, with the media still running and nobody to send it to.
+     *
+     * Backed off rather than hammered, and capped: whatever is wrong is not
+     * going to be fixed by asking faster.
+     */
+    let rejoining = null
+    let attempts = 0
+
+    const tryAgain = () => {
+        if (stopped) {
+            return
+        }
+
+        attempts = Math.min(attempts + 1, 5)
+
+        const wait = Math.min(1000 * 2 ** (attempts - 1), 15000)
+
+        say(`mesh: lost the party room, trying again in ${wait}ms`)
+
+        clearTimeout(rejoining)
+        rejoining = setTimeout(() => void api.join(), wait)
+    }
+
+    /** Everything that belonged to the connection we just lost. */
+    const forgetEveryone = () => {
+        for (const connection of connections.values()) {
+            connection.close()
+        }
+
+        connections.clear()
+        waiting.clear()
+        changed()
+    }
+
+    /**
+     * Who is here, as the thing drawing wants it.
+     *
+     * Whether somebody is sending video is answered by whether there is a video
+     * track, not by whether it is carrying packets this instant. A track that
+     * has just arrived reports itself muted until media flows — and in Chrome
+     * whether it flows can depend on something consuming it, which makes
+     * hiding the picture until it unmutes circular: hidden because muted, muted
+     * because hidden.
+     *
+     * The track is also the more honest answer to the question being asked. A
+     * muted overlay should mean "not sharing a microphone", not "no packet in
+     * the last few milliseconds".
+     */
     const people = () =>
-        [...connections.keys()].map((id) => ({
-            session: id,
-            name: connections.get(id).name,
-            status: connections.get(id).status(),
-            stream: connections.get(id).arriving,
-            audio: arriving.get(id)?.audio ?? false,
-            video: arriving.get(id)?.video ?? false,
-        }))
+        [...connections.keys()].map((id) => {
+            const held = connections.get(id).arriving
+
+            return {
+                session: id,
+                name: connections.get(id).name,
+                status: connections.get(id).status(),
+                stream: held,
+                audio: held.getAudioTracks().length > 0,
+                video: held.getVideoTracks().length > 0,
+            }
+        })
 
     const changed = () => onPeople(people())
 
@@ -65,29 +140,37 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
      * negotiation needs exactly one polite party and nothing else about who.
      */
     const connect = (id, name) => {
-        arriving.set(id, { audio: false, video: false })
-
         const connection = peer({
             ice,
             polite: session < id,
             name,
             send: (note) => post.post(id, note),
-            onTrack: (kind, live) => {
-                const held = arriving.get(id)
-
-                if (held) {
-                    held[kind === 'audio' ? 'audio' : 'video'] = live
-                }
-
+            /* A track came or went. What it is doing right now is read off the
+               stream when we draw — see `people`. */
+            onTrack: changed,
+            onStatus: (state) => {
+                say(`${name} is ${state}`)
                 changed()
             },
-            onStatus: changed,
         })
 
         connections.set(id, connection)
 
         connection.open()
         connection.carry(tracks())
+
+        /* Anything they said before we existed. */
+        const held = waiting.get(id)
+
+        if (held) {
+            waiting.delete(id)
+
+            say(`mesh: ${held.length} note(s) were waiting from ${name}`)
+
+            for (const note of held) {
+                void connection.absorb(note)
+            }
+        }
 
         say(`mesh: opened a line to ${name}`)
     }
@@ -111,15 +194,23 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
             if (!present.some((person) => person.session === id)) {
                 connections.get(id).close()
                 connections.delete(id)
-                arriving.delete(id)
             }
         }
 
         changed()
     }
 
-    return {
+    const api = {
         async join() {
+            if (stopped) {
+                return false
+            }
+
+            /* Whatever the last attempt left behind. Session identifiers do not
+               survive a reconnection, so none of those peers exist any more. */
+            post?.stop()
+            forgetEveryone()
+
             let admitted
 
             try {
@@ -136,6 +227,7 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
             } catch (refused) {
                 trouble('could not get a way into the party', refused)
                 onTrouble('Your party would not let you in.')
+                tryAgain()
 
                 return false
             }
@@ -150,6 +242,7 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
             } catch (refused) {
                 trouble('could not join the party room', refused)
                 onTrouble('Could not reach the party’s room.')
+                tryAgain()
 
                 return false
             }
@@ -161,15 +254,24 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
                 session,
                 csrf,
                 onNotes: async (notes) => {
+                    if (notes.length) {
+                        say(`collected ${notes.length} note(s)`)
+                    }
+
                     for (const { from, data } of notes) {
-                        /*
-                         * A note from somebody the room has not mentioned yet
-                         * is ordinary during a join, and the sender will try
-                         * again. Answering it would mean opening a connection
-                         * to somebody we cannot see, which is the one thing the
-                         * ticket is for.
-                         */
-                        await connections.get(from)?.absorb(data)
+                        say(`a ${data.description ? data.description.type : 'candidate'} from ${from}`)
+
+                        const connection = connections.get(from)
+
+                        if (!connection) {
+                            /* Held until the room says who they are — see
+                               `waiting` above. */
+                            waiting.set(from, [...(waiting.get(from) ?? []), data])
+
+                            continue
+                        }
+
+                        await connection.absorb(data)
                     }
                 },
                 pace: () => (settled() ? LOOKING : LOOKING_HARD),
@@ -177,6 +279,35 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
 
             post.start()
             room.onStateChange(regard)
+
+            /*
+             * And notice when it goes. A sleeping laptop closes the socket, and
+             * without this the party is simply over — media still running,
+             * nobody left to send it to, and nothing on screen saying so.
+             */
+            const joined = room
+
+            room.onLeave((code) => {
+                /*
+                 * Only for the connection we are actually on. Replacing a room
+                 * closes the old one, and its farewell arrives afterwards —
+                 * acted on, that is a reconnection triggering another
+                 * reconnection for as long as anybody is watching.
+                 */
+                if (stopped || room !== joined) {
+                    return
+                }
+
+                say(`mesh: the party room closed (${code})`)
+
+                post?.stop()
+                forgetEveryone()
+
+                tryAgain()
+            })
+
+            attempts = 0
+            say('mesh: in the party room')
 
             return true
         },
@@ -201,6 +332,7 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
             }
 
             stopped = true
+            clearTimeout(rejoining)
             post?.stop()
 
             for (const connection of connections.values()) {
@@ -208,9 +340,10 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
             }
 
             connections.clear()
-            arriving.clear()
 
             void room?.leave()
         },
     }
+
+    return api
 }

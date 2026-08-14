@@ -45,7 +45,7 @@ final class Comms
     /**
      * The badge is a circle of this many pixels, in a frame this much larger.
      *
-     * @return array{badge: int, pad: int, lift: int, margin: int}
+     * @return array{badge: int, pad: int, lift: int, margin: int, margin_narrow: int}
      */
     public function shape(): array
     {
@@ -63,6 +63,7 @@ final class Comms
             'lift' => intdiv($pad, 2),
 
             'margin' => (int) config('streetmesh.venue.comms.margin', 40),
+            'margin_narrow' => (int) config('streetmesh.venue.comms.margin_narrow', 20),
         ];
     }
 

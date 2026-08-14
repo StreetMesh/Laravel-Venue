@@ -203,7 +203,13 @@ import mesh from './mesh.js'
      * stream to a fresh video element restarts playback, so within a document
      * they are reused.
      */
+    /** Below this a face is not a face. */
+    const SMALLEST = 36
+
     let circles = new Map()
+
+    /* A row that fitted in portrait need not fit in landscape. */
+    window.addEventListener('resize', () => draw())
 
     const circle = (doc, key) => {
         if (circles.has(key)) {
@@ -228,8 +234,21 @@ import mesh from './mesh.js'
         const picture = el.querySelector('video')
         const avatar = el.querySelector('.avatar')
 
-        if (stream && picture.srcObject !== stream) {
+        /*
+         * Pointed at the stream, and re-pointed when what is in it changes.
+         *
+         * The stream object is made once and tracks are added to it later, so
+         * the element is usually given an empty one. WebKit notices the track
+         * that turns up afterwards; Chrome does not reliably, and the picture
+         * that never appeared was arriving the whole time. Re-assigning is what
+         * makes it look again, and it is cheap because it only happens when the
+         * count actually changes.
+         */
+        const carrying = stream ? String(stream.getTracks().length) : '0'
+
+        if (stream && (picture.srcObject !== stream || picture.dataset.carrying !== carrying)) {
             picture.srcObject = stream
+            picture.dataset.carrying = carrying
         }
 
         /* Hearing yourself a fraction of a second late is the single most
@@ -238,6 +257,28 @@ import mesh from './mesh.js'
 
         picture.hidden = !video
         avatar.hidden = Boolean(video)
+
+        /*
+         * And make sure it is actually playing.
+         *
+         * The element is pointed at this peer's stream once, when the circle is
+         * first drawn, and that stream is usually empty at the time — a track
+         * is added to it minutes later when somebody presses Show. An element
+         * that began playing an empty stream does not reliably start rendering
+         * the track that arrives afterwards, and one that has been `hidden`
+         * since may have stopped decoding altogether.
+         *
+         * WebKit resumes on its own; Chrome does not. That asymmetry is exactly
+         * what "I can see them but they cannot see me" looks like, and it is
+         * nothing to do with the connection — by then the picture is arriving,
+         * it is simply not being drawn.
+         *
+         * The rejection is ignored on purpose: a play that loses a race with
+         * another play is not a problem worth a line in anybody's console.
+         */
+        if (video) {
+            void picture.play().catch(() => {})
+        }
         avatar.textContent = (name || '?').replace(/^@/, '').charAt(0).toUpperCase()
 
         /*
@@ -255,8 +296,39 @@ import mesh from './mesh.js'
         el.title = name || ''
     }
 
+    /**
+     * Faces that are not anybody, for looking at a full party alone.
+     *
+     * `localStorage.smCrowd = 3` and reload. Purely a drawing aid — no
+     * connection, no stream, no presence — so that a question about how four
+     * circles sit on a narrow screen can be answered without finding three
+     * other people and a fourth device.
+     *
+     * The same shelf as `smDebug`, and off unless somebody has deliberately put
+     * a number there.
+     */
+    const crowd = () => {
+        let many = 0
+
+        try {
+            many = Number(window.localStorage?.getItem('smCrowd')) || 0
+        } catch {
+            /* Private browsing refuses to answer, which is the same as none. */
+        }
+
+        return Array.from({ length: Math.max(0, Math.min(many, 8)) }, (_, i) => ({
+            session: `nobody-${i}`,
+            name: ['robin', 'sam', 'wren', 'ash', 'kit', 'juno', 'bex', 'nell'][i % 8],
+            stream: null,
+            audio: false,
+            video: false,
+        }))
+    }
+
     function draw () {
-        const others = party ? party.people() : []
+        /* Pretend faces sit furthest from the badge, so the real ones stay
+           where they would be without them. */
+        const others = [...crowd(), ...(party ? party.people() : [])]
         const mine = speaking || showing || Boolean(config.party)
         const count = others.length + (mine ? 1 : 0)
 
@@ -265,7 +337,50 @@ import mesh from './mesh.js'
          * and falls back to the stylesheet, which says `none` — so the strip
          * stayed hidden however many faces were on it.
          */
-        stage.style.width = count > 0 ? ((config.frame || 90) * count) + 'px' : '0'
+        /*
+         * A face and its gap, not a whole badge frame. The badge's frame is
+         * wider than its circle by a padding it keeps on both sides; a face
+         * keeps one. Sizing the row by the frame left a gap between faces twice
+         * the size of the gap at the end of it.
+         */
+        /*
+         * How wide a face may be, given how many there are and how much room is
+         * left of the badge.
+         *
+         * Four faces and a badge want 380px at full size, which is more than
+         * the narrowest phone has — so past that point they shrink together
+         * rather than the last one falling off the edge. The badge does not: it
+         * is the anchor everything is measured from, and an anchor that moved
+         * when somebody joined would be worse than a slightly larger circle at
+         * the end of the row.
+         *
+         * There is a floor. Below it a face is not a face, and a row that
+         * cannot be read is not worth fitting.
+         */
+        const full = config.badge || 60
+        const gap = config.lift || 15
+
+        /*
+         * Measured off the badge rather than worked out from configuration.
+         *
+         * Where the badge sits is a stylesheet's decision and it differs by
+         * breakpoint — asking the element where it actually is gets the right
+         * answer under any of them, and cannot drift from the CSS the way a
+         * second copy of the arithmetic would.
+         *
+         * The gutter it leaves on the left matches the one it keeps on the
+         * right, so a full row looks inset rather than jammed against the edge.
+         */
+        const anchored = badge.getBoundingClientRect()
+        const gutter = Math.max(0, window.innerWidth - anchored.right)
+
+        const room = anchored.left - gutter
+        const wanted = count * (full + gap)
+
+        const slot = count > 0 && wanted > room ? Math.max(SMALLEST + gap, room / count) : full + gap
+        const face = Math.floor(slot - gap)
+
+        stage.style.width = count > 0 ? Math.ceil(slot * count) + 'px' : '0'
         stage.style.display = count > 0 ? 'block' : 'none'
 
         const doc = stage.contentDocument
@@ -275,6 +390,9 @@ import mesh from './mesh.js'
         if (!strip) {
             return
         }
+
+        /* Every measurement in that document is expressed against this. */
+        doc.documentElement.style.setProperty('--face', face + 'px')
 
         strip.replaceChildren()
 

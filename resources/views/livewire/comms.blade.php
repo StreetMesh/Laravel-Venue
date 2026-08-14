@@ -45,6 +45,19 @@ new class extends Component
      */
     public bool $chosen = false;
 
+    /**
+     * Whether the party strip should be open when it first appears.
+     *
+     * Somebody who has just started one has a party of themselves and needs the
+     * word that lets anybody else in — which lives in the drawer. Leaving it
+     * shut means the first thing they do is hunt for the thing they obviously
+     * came for.
+     *
+     * Read once, when the strip is drawn for the first time. Shutting it
+     * afterwards is the browser's business and nothing here overrides that.
+     */
+    public bool $detailsOpen = false;
+
     public function mount(): void
     {
         /*
@@ -55,6 +68,16 @@ new class extends Component
         $this->tab = $this->parties()->enabled() ? 'party' : 'room';
     }
 
+    /**
+     * Remember that the reader picked a tab, so the page stops picking for them.
+     *
+     * Which tab is *showing* is not decided here — that is held in the browser,
+     * because a tab is UI state and making it a round trip put every click
+     * behind whatever poll happened to be in flight. On Safari that read as a
+     * long pause, or as nothing happening at all.
+     *
+     * This is told afterwards and nothing waits for it.
+     */
     public function choose(string $tab): void
     {
         $this->tab = $tab;
@@ -69,6 +92,10 @@ new class extends Component
 
         if (! $this->chosen) {
             $this->tab = $space !== '' ? 'room' : ($this->parties()->enabled() ? 'party' : 'room');
+
+            /* The browser holds which tab is showing, so it has to be told when
+               the page changes its mind about the default. */
+            $this->dispatch('comms-tab', tab: $this->tab);
         }
 
         unset($this->roster, $this->invitations, $this->here);
@@ -130,6 +157,9 @@ new class extends Component
     public function start(): void
     {
         $this->run(fn (Delegation $me) => $this->parties()->open($me));
+
+        /* A party of one, and the code is what changes that. */
+        $this->detailsOpen = true;
     }
 
     public function join(): void
@@ -232,28 +262,55 @@ new class extends Component
     }
 };?>
 
-<div class="flex h-full flex-col bg-white dark:bg-zinc-900" wire:poll.5s>
-    {{-- The two conversations, and which one is being read. --}}
+<div
+    class="flex h-full flex-col bg-white dark:bg-zinc-900"
+    wire:poll.5s
+    x-data="{
+        tab: @js($tab),
+
+        /**
+         * Show a tab, and say so.
+         *
+         * A pane that was hidden has no height, so anything the conversation
+         * inside it did about scrolling was done to a box of nothing. It
+         * listens for this and goes back to the newest line.
+         */
+        show (which) {
+            this.tab = which
+
+            this.$nextTick(() => window.dispatchEvent(new CustomEvent('comms-shown')))
+        },
+    }"
+    x-on:comms-tab.window="show($event.detail.tab)"
+>
+    {{--
+        The two conversations, and which one is being read.
+
+        Held in the browser rather than on the server. A tab is UI state, and
+        making it a round trip queued every click behind whatever poll was in
+        flight — which on Safari read as a long pause or as a click that did
+        nothing at all. The server is told afterwards, so that the page stops
+        choosing a default once somebody has chosen for themselves, and nothing
+        waits for that to land.
+    --}}
     <div class="flex shrink-0 border-b border-zinc-200 dark:border-zinc-700">
         <button
             type="button"
-            wire:click="choose('room')"
-            @class([
-                'flex-1 px-4 py-3 text-sm font-medium',
-                'border-b-2 border-[var(--sm-accent)] font-semibold text-zinc-900 dark:text-[var(--sm-accent)]' => $tab === 'room',
-                'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200' => $tab !== 'room',
-            ])
+            x-on:click="show('room'); $wire.choose('room')"
+            class="flex-1 px-4 py-3 text-sm"
+            x-bind:class="tab === 'room'
+                ? 'border-b-2 border-[var(--sm-accent)] font-semibold text-zinc-900 dark:text-[var(--sm-accent)]'
+                : 'font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'"
         >{{ $spaceLabel !== '' ? $spaceLabel : __('Room') }}</button>
 
         @if ($this->offered)
             <button
                 type="button"
-                wire:click="choose('party')"
-                @class([
-                    'flex-1 px-4 py-3 text-sm font-medium',
-                    'border-b-2 border-[var(--sm-accent)] font-semibold text-zinc-900 dark:text-[var(--sm-accent)]' => $tab === 'party',
-                    'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200' => $tab !== 'party',
-                ])
+                x-on:click="show('party'); $wire.choose('party')"
+                class="flex-1 px-4 py-3 text-sm"
+                x-bind:class="tab === 'party'
+                    ? 'border-b-2 border-[var(--sm-accent)] font-semibold text-zinc-900 dark:text-[var(--sm-accent)]'
+                    : 'font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'"
             >
                 {{ __('Party') }}
                 @if ($this->invitations->isNotEmpty())
@@ -262,31 +319,51 @@ new class extends Component
             </button>
         @endif
 
-        <button
-            type="button"
-            class="px-3 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-            x-on:click="window.parent.postMessage({ method: 'streetmesh.panel.close', params: {} }, window.location.origin)"
-            aria-label="{{ __('Close') }}"
-        >&times;</button>
+        {{--
+            A circle rather than a bare glyph, and at the size of the words
+            beside it. The tabs are the thing being chosen between; this is one
+            control sitting next to them, and a cross floating at whatever size
+            the document happened to be reads as debris rather than a button.
+
+            Its own centred cell, so the circle lines up with the middle of the
+            strip rather than the top of the text.
+        --}}
+        <div class="flex shrink-0 items-center pe-2">
+            <button
+                type="button"
+                class="flex size-7 items-center justify-center rounded-full text-sm leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                x-on:click="window.parent.postMessage({ method: 'streetmesh.panel.close', params: {} }, window.location.origin)"
+                aria-label="{{ __('Close') }}"
+            >&times;</button>
+        </div>
     </div>
 
-    <div class="min-h-0 flex-1 overflow-y-auto p-3">
-        @if ($tab === 'room')
-            @if ($space === '')
-                {{-- Nowhere in particular. A venue has screens that are not
-                     places — a menu, a settings page — and pretending otherwise
-                     would put an unanswerable chat box on them. --}}
+    {{--
+        Both panes are drawn and one is hidden, which is what lets the switch be
+        instant. It costs a second chat component polling in the background; a
+        tab that responds when it is pressed is worth more than the query.
+    --}}
+    <div class="flex min-h-0 flex-1 flex-col" x-show="tab === 'room'">
+        @if ($space === '')
+            {{-- Nowhere in particular. A venue has screens that are not places —
+                 a menu, a settings page — and pretending otherwise would put an
+                 unanswerable chat box on them. --}}
+            <div class="p-3">
                 <flux:text>{{ __('You are not anywhere people are talking. Go into an experience and this fills up.') }}</flux:text>
-            @else
-                @livewire('venue::chat', [
-                    'space' => $space,
-                    'placeholder' => __('Say something to the room'),
-                ], key('room-'.md5($space)))
-            @endif
+            </div>
         @else
-            @include('venue::comms.party')
+            @livewire('venue::chat', [
+                'space' => $space,
+                'placeholder' => __('Say something to the room'),
+            ], key('room-'.md5($space)))
         @endif
     </div>
+
+    @if ($this->offered)
+        <div class="flex min-h-0 flex-1 flex-col" x-show="tab === 'party'" x-cloak>
+            @include('venue::comms.party')
+        </div>
+    @endif
 
     {{--
         Being heard and seen, on both tabs and whether or not there is a party.
@@ -295,9 +372,6 @@ new class extends Component
         were useless: your own circle only appears once something is turned on,
         so with no party and nothing on there was no switch anywhere on screen —
         no way in at all. A camera is yours rather than the party's.
-
-        The switches themselves live in the stage document, because that is
-        where the microphone is. These say so; they do not do it.
     --}}
     <div
         class="flex shrink-0 gap-2 border-t border-zinc-200 p-3 dark:border-zinc-700"

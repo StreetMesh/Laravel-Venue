@@ -31,6 +31,10 @@
          */
         $edge = $shape['margin'] - $shape['lift'];
 
+        /* The same sum on a narrow screen, where the corner is worth less than
+           the room a face needs. */
+        $tight = $shape['margin_narrow'] - $shape['lift'];
+
         /*
          * Worked out here rather than inside a directive's arguments. Blade
          * reads those with a parser that counts brackets, and a `view(...)`
@@ -145,6 +149,48 @@
                the same reason — see above. */
             filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .35));
         }
+
+        /*
+            On a phone.
+
+            The panel takes the screen, and the badge moves into the corner.
+
+            The badge anchors everything to its left, so where it sits decides
+            how many faces fit along the bottom — every millimetre it gives back
+            to the corner is one a face cannot use. The faces still run left
+            rather than stacking upward: that was tried and read worse.
+
+            640px is the line SuperBotMan draws, and it is drawn here in CSS
+            rather than in script so that turning a phone sideways is the
+            browser's problem rather than a resize listener's.
+        */
+        @media (max-width: 639px) {
+            /*
+                Full screen, and in front of everything — including the badge
+                and the faces, which would otherwise sit on top of the
+                conversation they belong to.
+            */
+            #streetmesh-panel {
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                border: 0;
+                border-radius: 0;
+                box-shadow: none;
+                z-index: 2147483003;
+            }
+
+            #streetmesh-badge {
+                bottom: {{ $tight }}px;
+                right: {{ $tight }}px;
+            }
+
+            /* Beside it, wherever it has moved to. */
+            #streetmesh-stage {
+                bottom: {{ $tight }}px;
+                right: {{ $tight + $frame }}px;
+            }
+        }
     </style>
 
     @persist('streetmesh-comms')
@@ -154,6 +200,13 @@
             title="{{ __('Talking') }}"
             scrolling="no"
             allowtransparency="true"
+            {{--
+                So the party's code can be copied. A frame is not granted the
+                clipboard by being same-origin, and without saying so the write
+                is refused in a way that looks exactly like a button that does
+                nothing.
+            --}}
+            allow="clipboard-write"
         ></iframe>
 
         <iframe

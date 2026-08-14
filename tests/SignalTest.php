@@ -88,6 +88,36 @@ class SignalTest extends TestCase
     }
 
     /**
+     * A session description arrives byte for byte.
+     *
+     * An SDP is a line-oriented document whose every line ends in CRLF,
+     * including the last. Laravel trims request input as a kindness to HTML
+     * forms, and applied here that takes the terminator off the final line —
+     * the far side then refuses the whole thing with "Invalid SDP line", and
+     * every ICE candidate for it fails after with "the remote description was
+     * null". Two browsers sat looking at each other and nothing said why.
+     */
+    public function test_a_session_description_is_not_tidied_on_the_way_through(): void
+    {
+        [$party, $alice, $bob] = $this->partyOfTwo();
+
+        $sdp = "v=0\r\no=- 4611731400430051336 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\n";
+
+        $this->as($alice)->postJson(route('venue.parties.signal', $party->key), [
+            'from' => 'alice-tab',
+            'to' => 'bob-tab',
+            'data' => ['description' => ['type' => 'offer', 'sdp' => $sdp]],
+        ])->assertOk();
+
+        $waiting = $this->as($bob)
+            ->getJson(route('venue.parties.signals', $party->key).'?as=bob-tab')
+            ->json('signals');
+
+        $this->assertSame($sdp, $waiting[0]['data']['description']['sdp']);
+        $this->assertStringEndsWith("\r\n", $waiting[0]['data']['description']['sdp']);
+    }
+
+    /**
      * Addressed to a connection rather than to a person.
      *
      * The same human with a laptop and a phone is two peers and needs two
