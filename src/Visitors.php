@@ -47,6 +47,20 @@ final class Visitors
 
     public function current(Request $request): ?Delegation
     {
+        /*
+         * No session at all is nobody here, rather than an error.
+         *
+         * Being here *is* a session holding a delegation, so a request without
+         * one cannot be anybody by definition — a console command, a request
+         * outside the `web` group, or a component rendered somewhere no browser
+         * reached. Asking anyway throws "Session store not set on request",
+         * which reads as a bug in whatever is rendering rather than as the
+         * ordinary answer that nobody has come through the door.
+         */
+        if (! $request->hasSession()) {
+            return null;
+        }
+
         $id = $request->session()->get(self::SESSION_KEY);
 
         /*

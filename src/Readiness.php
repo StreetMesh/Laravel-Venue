@@ -21,7 +21,37 @@ final readonly class Readiness
         private bool $isVenue,
         private bool $hasSecret,
         private ?string $hub,
+        private bool $parties = false,
+        private int $partySize = 0,
     ) {}
+
+    /**
+     * Things that will work, and not the way somebody asked for.
+     *
+     * Separate from `missing` because these are not reasons to stay shut. A
+     * venue with a party size it cannot honour still opens — it just opens
+     * having quietly done something other than what its configuration says,
+     * and quietly is the part worth fixing.
+     *
+     * @return array<int, string>
+     */
+    public function concerns(): array
+    {
+        if (! $this->isVenue || ! $this->parties) {
+            return [];
+        }
+
+        $concerns = [];
+
+        if ($this->partySize > Parties\Parties::MESH_CEILING) {
+            $concerns[] = 'STREETMESH_VENUE_PARTY_SIZE is '.$this->partySize.', and parties here hold '
+                .Parties\Parties::MESH_CEILING.'. Media between people in a party is peer-to-peer, so every '
+                .'participant sends a copy of their stream to every other and it stops working somewhere past '
+                .'four. The larger number is being ignored.';
+        }
+
+        return $concerns;
+    }
 
     /**
      * What is missing, or null if nothing is.

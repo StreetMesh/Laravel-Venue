@@ -9,6 +9,7 @@ use StreetMesh\Protocol\Laravel\Permissions\Delegation;
 use StreetMesh\Protocol\Laravel\Permissions\Tickets;
 use StreetMesh\Venue\Experiences\Audience;
 use StreetMesh\Venue\Experiences\Experiences;
+use StreetMesh\Venue\Parties\Parties;
 
 /**
  * Opening something, seating people at it, and letting them in.
@@ -27,6 +28,7 @@ final class Gatherings
     public function __construct(
         private readonly Tickets $tickets,
         private readonly Experiences $experiences,
+        private readonly Parties $parties,
     ) {}
 
     public function open(string $experience): Gathering
@@ -108,8 +110,17 @@ final class Gatherings
         $seat = $visitor === null ? null : $this->seatOf($gathering, $visitor);
         $seated = $seat !== null && $seat->left_at === null;
 
+        /*
+         * Who they are here with, which this gathering has no opinion about.
+         *
+         * A party spans the venue and no experience is asked whether it minds,
+         * so this is read rather than decided — and it rides the ticket because
+         * the room has to be able to show that somebody is in one.
+         */
+        $party = $this->parties->partyOf($visitor)?->room() ?? '';
+
         if ($seated) {
-            return $this->tickets->mint($visitor, $gathering->room(), $seat->seat, $this->filled($gathering));
+            return $this->tickets->mint($visitor, $gathering->room(), $seat->seat, $this->filled($gathering), $party);
         }
 
         if (! $this->audienceFor($gathering)->admits(arrived: $visitor !== null, seated: false)) {
@@ -126,7 +137,7 @@ final class Gatherings
          */
         return $visitor === null
             ? $this->tickets->watcher($gathering->room(), $this->filled($gathering))
-            : $this->tickets->mint($visitor, $gathering->room(), '', $this->filled($gathering));
+            : $this->tickets->mint($visitor, $gathering->room(), '', $this->filled($gathering), $party);
     }
 
     /**

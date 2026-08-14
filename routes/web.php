@@ -2,7 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
+use StreetMesh\Venue\Http\CommsController;
 use StreetMesh\Venue\Http\ConnectController;
+use StreetMesh\Venue\Http\PartyController;
+use StreetMesh\Venue\Http\SignalController;
 use StreetMesh\Venue\Http\TicketController;
 
 /*
@@ -80,3 +83,56 @@ Route::livewire('experiences', 'venue::experiences')
  */
 Route::post('gatherings/{key}/ticket', TicketController::class)
     ->name('venue.ticket');
+
+/*
+ * The three documents the comms widget is made of.
+ *
+ * Outside the `visitor` group on purpose. A passer-by watching a public game
+ * still gets the badge — it just has nothing behind it but an invitation to
+ * come through the door, which is a better answer than a corner of the screen
+ * that is empty for reasons nobody can see.
+ */
+Route::get('comms/badge', [CommsController::class, 'badge'])->name('venue.comms.badge');
+Route::get('comms/panel', [CommsController::class, 'panel'])->name('venue.comms.panel');
+Route::get('comms/stage', [CommsController::class, 'stage'])->name('venue.comms.stage');
+
+/*
+ * Being here with other people.
+ *
+ * All of it behind the door, and that is the whole of the access control: a
+ * party is invite-only, so holding a permission this venue issued is the least
+ * anybody needs before they can start one, be asked into one, or answer.
+ *
+ * `parties` in front of the lot, so that a venue with them switched off has
+ * nothing here rather than a set of endpoints that refuse — the same rule the
+ * capability itself follows. Asked per request, because a config read while
+ * routes are being registered gets cached into the route table and then appears
+ * to do nothing at all.
+ */
+Route::middleware(['visitor', 'parties'])->group(function (): void {
+    Route::post('parties', [PartyController::class, 'open'])->name('venue.parties.open');
+    Route::post('parties/leave', [PartyController::class, 'leave'])->name('venue.parties.leave');
+
+    Route::post('parties/{key}/ticket', [PartyController::class, 'ticket'])->name('venue.parties.ticket');
+    Route::post('parties/{key}/invitations', [PartyController::class, 'invite'])->name('venue.parties.invite');
+
+    Route::post('party-invitations/{invitation}/accept', [PartyController::class, 'accept'])
+        ->name('venue.parties.accept');
+
+    Route::post('party-invitations/{invitation}/decline', [PartyController::class, 'decline'])
+        ->name('venue.parties.decline');
+
+    /*
+     * The notes two browsers leave each other on the way to talking directly.
+     *
+     * Over ordinary HTTP rather than through the room, and that is settled
+     * rather than convenient: the room's transport caps a message at 4KB, which
+     * is fine for a move and about half of what a video offer needs — so
+     * enabling a camera closed the socket.
+     */
+    Route::get('parties/{key}/signals', [SignalController::class, 'collect'])
+        ->name('venue.parties.signals');
+
+    Route::post('parties/{key}/signals', [SignalController::class, 'post'])
+        ->name('venue.parties.signal');
+});

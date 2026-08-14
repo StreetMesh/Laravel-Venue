@@ -72,4 +72,55 @@ final class ReadinessTest extends Plain
         $this->assertStringContainsString('STREETMESH_REALTIME_SECRET', (string) $missing);
         $this->assertStringNotContainsString('STREETMESH_HUB', (string) $missing);
     }
+
+    /**
+     * A party larger than the media can carry is said out loud.
+     *
+     * Not a refusal — the venue opens, with parties the size they can actually
+     * be. What is being prevented is the quiet part: an operator who asked for
+     * eight and got four, with nothing anywhere saying so, and eight people
+     * later wondering why two of them cannot be heard.
+     */
+    public function test_a_party_larger_than_the_mesh_is_named(): void
+    {
+        $readiness = new Readiness(
+            isVenue: true,
+            hasSecret: true,
+            hub: 'wss://hub.test',
+            parties: true,
+            partySize: 8,
+        );
+
+        $this->assertNull($readiness->missing(), 'it still opens');
+
+        $concerns = $readiness->concerns();
+
+        $this->assertCount(1, $concerns);
+        $this->assertStringContainsString('STREETMESH_VENUE_PARTY_SIZE', $concerns[0]);
+    }
+
+    public function test_a_party_the_mesh_can_carry_is_not_worth_mentioning(): void
+    {
+        $this->assertSame([], (new Readiness(
+            isVenue: true,
+            hasSecret: true,
+            hub: 'wss://hub.test',
+            parties: true,
+            partySize: 4,
+        ))->concerns());
+    }
+
+    /**
+     * A venue with parties off is not being asked how big they would be.
+     */
+    public function test_a_venue_without_parties_has_nothing_to_say_about_them(): void
+    {
+        $this->assertSame([], (new Readiness(
+            isVenue: true,
+            hasSecret: true,
+            hub: 'wss://hub.test',
+            parties: false,
+            partySize: 99,
+        ))->concerns());
+    }
 }

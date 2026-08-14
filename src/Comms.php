@@ -1,0 +1,99 @@
+<?php
+
+namespace StreetMesh\Venue;
+
+use Illuminate\Http\Request;
+use StreetMesh\Venue\Parties\Parties;
+
+/**
+ * What the comms widget needs to know, in one place.
+ *
+ * Two surfaces ask for it — the snippet the host page includes, and the
+ * documents served into the frames — and they have to agree. They did not for a
+ * while: the frames knew which party somebody was in and the page around them
+ * did not, which was survivable only while the media lived in a frame.
+ *
+ * It does not any more. A navigation replaces the page's body and reloads every
+ * iframe in it, so anything holding a camera has to live in the one place that
+ * survives: the host document. The frames render; this is what the host is told
+ * so it can do the rest.
+ */
+final class Comms
+{
+    public function __construct(
+        private readonly Parties $parties,
+        private readonly Visitors $visitors,
+    ) {}
+
+    public function offered(): bool
+    {
+        return (bool) config('streetmesh.venue.comms.enabled', true);
+    }
+
+    /**
+     * The badge is a circle of this many pixels, in a frame this much larger.
+     *
+     * @return array{badge: int, pad: int, lift: int, margin: int}
+     */
+    public function shape(): array
+    {
+        $pad = (int) config('streetmesh.venue.comms.pad', 30);
+
+        return [
+            'badge' => (int) config('streetmesh.venue.comms.badge', 60),
+            'pad' => $pad,
+
+            /*
+             * Half the padding, which is what separates the badge's circle from
+             * the bottom of its own frame — and therefore how far the faces
+             * beside it are lifted to sit on the same line.
+             */
+            'lift' => intdiv($pad, 2),
+
+            'margin' => (int) config('streetmesh.venue.comms.margin', 40),
+        ];
+    }
+
+    /**
+     * The few colours the widget draws itself with.
+     *
+     * Read from one place because two of its documents load no stylesheet and
+     * cannot reach a token — see the note in the config.
+     *
+     * @return array{ink: string, paper: string, accent: string}
+     */
+    public function palette(): array
+    {
+        return [
+            'ink' => (string) config('streetmesh.venue.comms.palette.ink', '#14181A'),
+            'paper' => (string) config('streetmesh.venue.comms.palette.paper', '#fafafa'),
+            'accent' => (string) config('streetmesh.venue.comms.palette.accent', '#00FF99'),
+        ];
+    }
+
+    /**
+     * Everything the host document needs to hold the media itself.
+     *
+     * The party is named here rather than discovered by the frames, because the
+     * thing that connects to it now lives in the page. Null for somebody in no
+     * party, which is most people most of the time.
+     *
+     * @return array<string, mixed>
+     */
+    public function forHost(Request $request): array
+    {
+        $visitor = $this->visitors->current($request);
+        $party = $this->parties->partyOf($visitor);
+
+        return [
+            'here' => $visitor !== null,
+            'me' => $visitor?->handle,
+
+            'party' => $party === null ? null : [
+                'key' => $party->key,
+                'ticketUrl' => route('venue.parties.ticket', $party->key),
+                'signalsUrl' => route('venue.parties.signals', $party->key),
+            ],
+        ];
+    }
+}

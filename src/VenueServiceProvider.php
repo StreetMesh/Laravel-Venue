@@ -10,6 +10,8 @@ use StreetMesh\Venue\Console\BuildHub;
 use Illuminate\Console\Scheduling\Schedule;
 use StreetMesh\Venue\Console\DeployHub;
 use StreetMesh\Venue\Console\TidyGatherings;
+use StreetMesh\Venue\Console\TidyParties;
+use Illuminate\Support\Facades\Log;
 
 class VenueServiceProvider extends ServiceProvider
 {
@@ -26,6 +28,10 @@ class VenueServiceProvider extends ServiceProvider
         $this->app->singleton(Experiences\Experiences::class);
         $this->app->singleton(Gatherings\Gatherings::class);
         $this->app->singleton(Gatherings\Results::class);
+        $this->app->singleton(Parties\Parties::class);
+        $this->app->singleton(Chat\Chat::class);
+        $this->app->singleton(Media\Mailbox::class);
+        $this->app->singleton(Comms::class);
         $this->app->singleton(Realtime\Secrets::class);
         $this->app->singleton(Realtime\Occupancy::class);
     }
@@ -37,7 +43,7 @@ class VenueServiceProvider extends ServiceProvider
         $this->refuseUnlessEquipped();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([BuildHub::class, DeployHub::class, TidyGatherings::class]);
+            $this->commands([BuildHub::class, DeployHub::class, TidyGatherings::class, TidyParties::class]);
         }
 
         /*
@@ -51,6 +57,14 @@ class VenueServiceProvider extends ServiceProvider
          */
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
             $schedule->command(TidyGatherings::class)->everyFiveMinutes()->withoutOverlapping();
+
+            /*
+             * The same cadence, and a much cheaper sweep — this one asks the
+             * database whether anybody is still a member and never troubles the
+             * hub. See the command for why a party can empty without anybody
+             * having left.
+             */
+            $schedule->command(TidyParties::class)->everyFiveMinutes()->withoutOverlapping();
         });
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
@@ -84,6 +98,12 @@ class VenueServiceProvider extends ServiceProvider
          * into a cached route table and appears to do nothing.
          */
         $this->app['router']->aliasMiddleware('venue.menu', Http\GuardTheMenu::class);
+
+        /*
+         * Whether this venue does parties at all, asked the same way and for
+         * the same reason as the line above it.
+         */
+        $this->app['router']->aliasMiddleware('parties', Http\RequireParties::class);
 
         /*
          * At its own name, with no prefix. There is nothing here another
@@ -132,14 +152,28 @@ class VenueServiceProvider extends ServiceProvider
             return;
         }
 
-        $missing = (new Readiness(
+        $readiness = new Readiness(
             isVenue: $this->app->make(Capabilities::class)->has('venue'),
             hasSecret: $this->app->make(Realtime\Secrets::class)->configured(),
             hub: config('streetmesh.venue.hub'),
-        ))->missing();
+            parties: (bool) config('streetmesh.venue.parties.enabled', false),
+            partySize: (int) config('streetmesh.venue.parties.size', 0),
+        );
+
+        $missing = $readiness->missing();
 
         if ($missing !== null) {
             throw new RuntimeException($missing);
+        }
+
+        /*
+         * Said rather than thrown. These are settings that will work and not the
+         * way somebody asked for, which is not a reason to stay shut — but a
+         * venue that silently did something other than what its configuration
+         * says is exactly the failure this class exists to prevent.
+         */
+        foreach ($readiness->concerns() as $concern) {
+            Log::warning($concern);
         }
     }
 }
