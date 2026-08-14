@@ -3,6 +3,7 @@
 namespace StreetMesh\Venue;
 
 use Illuminate\Http\Request;
+use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Venue\Parties\Parties;
 
 /**
@@ -25,9 +26,20 @@ final class Comms
         private readonly Visitors $visitors,
     ) {}
 
+    /**
+     * Whether this server offers comms at all.
+     *
+     * The capability as well as the setting, and the capability is the half
+     * that was missing. Comms is included by the *application's* chrome, which
+     * a domicile draws too — but the routes behind it belong to the venue
+     * package's own group and are never registered on a server that is not a
+     * venue. So a domicile emitted three frames pointing at three addresses it
+     * does not have, and answered 404 into each of them on every page.
+     */
     public function offered(): bool
     {
-        return (bool) config('streetmesh.venue.comms.enabled', true);
+        return (bool) config('streetmesh.venue.comms.enabled', true)
+            && app(Capabilities::class)->offers('venue');
     }
 
     /**

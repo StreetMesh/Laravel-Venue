@@ -11,7 +11,7 @@
     The script that arranges them runs in this document and does nothing else —
     see `comms/host.js`.
 --}}
-@if (config('streetmesh.venue.comms.enabled', true))
+@if (app(\StreetMesh\Venue\Comms::class)->offered())
     @php
         $comms = app(\StreetMesh\Venue\Comms::class);
         $shape = $comms->shape();

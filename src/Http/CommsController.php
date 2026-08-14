@@ -37,7 +37,7 @@ final class CommsController
      */
     private function refuseUnlessOffered(): void
     {
-        if (! config('streetmesh.venue.comms.enabled', true)) {
+        if (! $this->comms->offered()) {
             throw new NotFoundHttpException('This venue offers no comms.');
         }
     }

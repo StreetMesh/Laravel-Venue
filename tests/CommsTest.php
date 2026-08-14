@@ -211,6 +211,29 @@ class CommsTest extends TestCase
             ->assertSee('"party":null', escape: false);
     }
 
+    /**
+     * A server that is not a venue has none of this, whatever the setting says.
+     *
+     * The widget is included by the application's chrome, which a domicile
+     * draws too — and the routes behind it belong to the venue package's own
+     * group, which is never registered on a server that is not a venue. Left to
+     * the setting alone, a domicile emitted three frames pointing at three
+     * addresses it does not have.
+     */
+    public function test_a_server_that_is_not_a_venue_offers_nothing(): void
+    {
+        config(['streetmesh.venue.comms.enabled' => true]);
+
+        /* The switch the operator sets, which is settled before anything
+           boots — see `Capabilities::offers`. */
+        $this->app->instance(
+            \StreetMesh\Protocol\Laravel\Capabilities\Capabilities::class,
+            new \StreetMesh\Protocol\Laravel\Capabilities\Capabilities(['venue' => false]),
+        );
+
+        $this->assertFalse($this->app->make(\StreetMesh\Venue\Comms::class)->offered());
+    }
+
     public function test_a_venue_with_comms_off_has_none(): void
     {
         config(['streetmesh.venue.comms.enabled' => false]);
