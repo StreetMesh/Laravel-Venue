@@ -210,6 +210,29 @@ class CommsTest extends TestCase
     }
 
     /**
+     * Each surface says it may be framed by this origin.
+     *
+     * Nothing local objects to framing, so this was found only once it was
+     * deployed: a proxy in front of the venue added `X-Frame-Options: deny` to
+     * everything it served, which refuses same-origin framing as flatly as any
+     * other kind. All three came back 200 and none of them appeared.
+     *
+     * `frame-ancestors` is the one that decides it — a browser reading both
+     * applies the policy and ignores the older header — which is why it is
+     * asserted here even though the proxy's own answer is the one that will
+     * arrive beside it.
+     */
+    public function test_the_surfaces_say_they_may_be_framed(): void
+    {
+        foreach (['badge', 'panel', 'stage'] as $surface) {
+            $this->as($this->visitor(), $surface)
+                ->assertOk()
+                ->assertHeader('Content-Security-Policy', "frame-ancestors 'self'")
+                ->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        }
+    }
+
+    /**
      * The party's addresses go to the page, because the page is what will be
      * using them.
      */

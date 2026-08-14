@@ -62,7 +62,40 @@ final class CommsController
 
         return response()
             ->view($view, $this->shared($request))
-            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate')
+            ->withHeaders($this->framing());
+    }
+
+    /**
+     * Saying who may put these in a frame, because something else says nobody.
+     *
+     * These documents exist to be framed — it is the whole reason they are
+     * documents — and locally nothing objects. In front of a deployed venue
+     * there is usually a proxy, and a proxy with security headers switched on
+     * sends `X-Frame-Options: deny` over everything it serves. That is a
+     * sensible default for a site made of pages and fatal to one made of
+     * frames: `deny` refuses *same-origin* framing too, so all three surfaces
+     * come back 200 and none of them is allowed to appear.
+     *
+     * Both headers, because they are read by different browsers and one of them
+     * we cannot win. `X-Frame-Options` is what an old browser understands, and
+     * it is also the one a proxy is likely to overwrite. `frame-ancestors`
+     * supersedes it wherever it is understood — a browser seeing both applies
+     * this and ignores that — which is what makes this work even when the
+     * proxy's `deny` arrives alongside it and we have no way to stop it.
+     *
+     * `'self'` and not a list. A venue frames its own comms and nobody else's
+     * business is served here, so there is nothing to allow that is not already
+     * this origin.
+     *
+     * @return array<string, string>
+     */
+    private function framing(): array
+    {
+        return [
+            'Content-Security-Policy' => "frame-ancestors 'self'",
+            'X-Frame-Options' => 'SAMEORIGIN',
+        ];
     }
 
     /** The circle in the corner. */
