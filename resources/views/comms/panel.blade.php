@@ -42,6 +42,7 @@
             overflow: hidden;
             box-shadow: 0 10px 40px rgba(0, 0, 0, .28);
         }
+
     </style>
 </head>
 <body class="h-full">
@@ -59,6 +60,11 @@
     @endif
 
     @livewireScripts
+
+    {{-- A poll that cannot reach the server, answered the same way here as on
+         every other page. This one runs for as long as the browser is open, so
+         it meets that case more than anything else does. --}}
+    @include('streetmesh::unreachable')
 
     <script>
         (function () {

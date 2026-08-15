@@ -266,7 +266,31 @@ new class extends Component
     class="flex h-full flex-col bg-white dark:bg-zinc-900"
     wire:poll.5s
     x-data="{
-        tab: @js($tab),
+        /*
+         * Kept where it was chosen rather than in memory.
+         *
+         * This element polls, and every poll morphs it — which writes the
+         * server's idea of the tab back into this very attribute. Anything held
+         * only in memory here is therefore held until the next re-render and no
+         * longer, which is a tab that switches and then switches back a moment
+         * later for no reason the reader can see.
+         *
+         * Reading it back out of the browser on every initialisation makes that
+         * harmless: however often this is re-made, it is re-made on the tab
+         * somebody actually picked. It also survives the panel reloading, which
+         * it does whenever the page around it navigates.
+         */
+        tab: sessionStorage.getItem('smCommsTab') || @js($tab),
+
+        /**
+         * Whether the reader has picked for themselves.
+         *
+         * The server keeps its own answer to this and is the reason the panel
+         * follows the page until somebody chooses. But it learns of a choice a
+         * request later, and in that gap it will go on sending defaults — so
+         * the browser keeps the answer too, and it is this one that decides.
+         */
+        chosen: sessionStorage.getItem('smCommsTab') !== null,
 
         /**
          * Show a tab, and say so.
@@ -276,12 +300,34 @@ new class extends Component
          * listens for this and goes back to the newest line.
          */
         show (which) {
+            this.chosen = true
+            sessionStorage.setItem('smCommsTab', which)
+
+            this.reveal(which)
+        },
+
+        /**
+         * The page's idea of where to start, which a choice outranks.
+         *
+         * Walking into a room moves the panel to that room's conversation, and
+         * must stop doing so the moment somebody has said where they would
+         * rather be.
+         */
+        suggest (which) {
+            if (this.chosen) {
+                return
+            }
+
+            this.reveal(which)
+        },
+
+        reveal (which) {
             this.tab = which
 
             this.$nextTick(() => window.dispatchEvent(new CustomEvent('comms-shown')))
         },
     }"
-    x-on:comms-tab.window="show($event.detail.tab)"
+    x-on:comms-tab.window="suggest($event.detail.tab)"
 >
     {{--
         The two conversations, and which one is being read.
