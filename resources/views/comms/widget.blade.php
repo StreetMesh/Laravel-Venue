@@ -47,6 +47,19 @@
             'icon' => 'microphone-slash',
             'class' => 'icon',
         ])->render());
+
+        /*
+         * The mark for somebody who cannot be reached.
+         *
+         * `xmark`, which this set already has. A truer glyph for it would be
+         * `link-slash`, and adding one means copying several hundred characters
+         * of curve data out of the Font Awesome source exactly — worth doing
+         * with that file open, and not worth approximating from memory.
+         */
+        $unreachableIcon = trim(view('venue::comms.icon', [
+            'icon' => 'xmark',
+            'class' => 'icon',
+        ])->render());
     @endphp
 
     <style>
@@ -262,7 +275,10 @@
             ...@json($host, JSON_UNESCAPED_SLASHES),
 
             {{-- The one icon the faces draw with. --}}
-            icons: { microphoneSlash: @json($mutedIcon) },
+            icons: {
+                microphoneSlash: @json($mutedIcon),
+                unreachable: @json($unreachableIcon),
+            },
 
             {{--
                 Which space this screen is, if it is one.

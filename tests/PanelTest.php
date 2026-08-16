@@ -111,6 +111,43 @@ class PanelTest extends TestCase
             ->assertSee('Reconnecting', escape: false);
     }
 
+    /**
+     * A person who cannot be reached is said so, in words.
+     *
+     * Two browsers on networks that cannot see each other produce an empty
+     * circle — which is also what somebody who has not turned a camera on
+     * produces, and what every signalling bug so far produced. One appearance
+     * for four meanings is why this failure has been mistaken for a bug three
+     * times.
+     */
+    public function test_the_panel_can_say_somebody_is_unreachable(): void
+    {
+        $this->withSession([Visitors::SESSION_KEY => $this->visitor('alice')->id]);
+
+        Livewire::test('venue::comms')
+            ->assertSeeHtml('unreachable: window.smUnreachable')
+            ->assertSeeHtml('comms-unreachable.window')
+            ->assertSeeHtml('cannotReach()');
+    }
+
+    /**
+     * And the party failing outright, which until now was announced to nobody.
+     *
+     * `streetmesh.stage.trouble` has been broadcast by the page since before
+     * any of this — "your party would not let you in", "could not reach the
+     * party's room", "this browser would not give us the camera" — and no
+     * document anywhere listened for it.
+     */
+    public function test_the_panel_hears_about_the_party_failing(): void
+    {
+        $this->withSession([Visitors::SESSION_KEY => $this->visitor('alice')->id]);
+
+        $this->get(route('venue.comms.panel'))
+            ->assertOk()
+            ->assertSee('streetmesh.stage.trouble', escape: false)
+            ->assertSee('streetmesh.stage.unreachable', escape: false);
+    }
+
     public function test_the_panel_survives_being_polled_with_two_in_the_party(): void
     {
         $alice = $this->visitor('alice');

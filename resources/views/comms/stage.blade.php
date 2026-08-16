@@ -112,8 +112,14 @@
         */
         .face.self video { transform: scaleX(-1); }
 
+        /*
+            Every one of these needs saying out loud. A `display` set anywhere
+            else beats the `hidden` attribute, and the symptom is two marks that
+            contradict each other sitting on one circle at the same time.
+        */
         .face video[hidden],
         .face .avatar[hidden],
+        .face .lost[hidden],
         .face .quiet[hidden] { display: none; }
 
         .face .avatar {
@@ -142,6 +148,40 @@
         }
 
         .face .quiet svg { width: calc(var(--face) * 0.22); height: calc(var(--face) * 0.22); }
+
+        /*
+            Somebody who cannot be reached at all.
+
+            The same slot the muted mark uses, and never both at once — see the
+            host, which decides between them. What separates them is colour and
+            what is behind them: muted is a fact about somebody who is here,
+            this is the absence of anybody to have facts about.
+
+            Deliberately not red. Nothing has gone wrong that anybody did, and
+            two browsers on networks that cannot see each other is a
+            circumstance rather than an error — amber says "this is not working"
+            without saying "this is broken".
+        */
+        .face .lost {
+            position: absolute;
+            inset: auto 0 0 0;
+            height: calc(var(--face) * 0.42);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, .72);
+            color: #fbbf24;
+        }
+
+        .face .lost svg { width: calc(var(--face) * 0.22); height: calc(var(--face) * 0.22); }
+
+        /*
+            And the face behind it goes quiet too. The mark alone reads as
+            something laid on top of a person who is otherwise present; dimming
+            what is underneath is what makes the whole circle say "not here",
+            which is the thing being reported.
+        */
+        .face.lost .avatar { opacity: .4; }
 
     </style>
 </head>

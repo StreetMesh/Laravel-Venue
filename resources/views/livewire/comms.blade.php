@@ -292,6 +292,30 @@ new class extends Component
          */
         chosen: sessionStorage.getItem('smCommsTab') !== null,
 
+        /*
+         * Who the page could not reach, read back the same way the tab is.
+         *
+         * This is the page's knowledge, not the server's — the server has no
+         * idea which pairs of browsers found each other — and it arrives by
+         * message. Every poll re-makes this element, so holding it only in
+         * memory would clear the line every five seconds and bring it back
+         * when the next connection failed.
+         */
+        unreachable: window.smUnreachable ?? [],
+
+        /** The party itself failing, which is a different and louder thing. */
+        partyTrouble: window.smPartyTrouble ?? '',
+
+        cannotReach () {
+            const who = this.unreachable
+
+            if (who.length === 1) {
+                return @js(__('Cannot connect to :name.')).replace(':name', who[0])
+            }
+
+            return @js(__('Cannot connect to :names.')).replace(':names', who.join(', '))
+        },
+
         /**
          * Show a tab, and say so.
          *
@@ -328,6 +352,8 @@ new class extends Component
         },
     }"
     x-on:comms-tab.window="suggest($event.detail.tab)"
+    x-on:comms-unreachable.window="unreachable = $event.detail.names"
+    x-on:comms-party-trouble.window="partyTrouble = $event.detail.why"
 >
     {{--
         The two conversations, and which one is being read.
@@ -407,6 +433,33 @@ new class extends Component
 
     @if ($this->offered)
         <div class="flex min-h-0 flex-1 flex-col" x-show="tab === 'party'" x-cloak>
+            {{--
+                Somebody in the party this browser could not reach.
+
+                A line rather than anything that interrupts, because nothing
+                here is actionable: two networks that cannot see each other are
+                a circumstance, and the party carries on around it — the text
+                still arrives, and everybody else is still connected.
+
+                What it is for is telling this apart from the several bugs it
+                impersonates. An empty circle that means "cannot reach them"
+                and an empty circle that means "not sharing yet" looked
+                identical, and the difference is a day of debugging.
+            --}}
+            <p
+                x-show="partyTrouble"
+                x-text="partyTrouble"
+                x-cloak
+                class="shrink-0 px-3 pt-3 text-xs text-red-600 dark:text-red-400"
+            ></p>
+
+            <p
+                x-show="unreachable.length"
+                x-text="cannotReach()"
+                x-cloak
+                class="shrink-0 px-3 pt-3 text-xs text-amber-600 dark:text-amber-500"
+            ></p>
+
             @include('venue::comms.party')
         </div>
     @endif

@@ -223,6 +223,7 @@ import mesh from './mesh.js'
             <video autoplay playsinline></video>
             <div class="avatar"></div>
             <div class="quiet">${config.icons?.microphoneSlash ?? ''}</div>
+            <div class="lost">${config.icons?.unreachable ?? ''}</div>
         `
 
         circles.set(key, el)
@@ -230,7 +231,7 @@ import mesh from './mesh.js'
         return el
     }
 
-    const paint = (el, { name, stream, video, audio, self }) => {
+    const paint = (el, { name, stream, video, audio, self, lost }) => {
         const picture = el.querySelector('video')
         const avatar = el.querySelector('.avatar')
 
@@ -285,15 +286,37 @@ import mesh from './mesh.js'
          * Presence comes from the tracks rather than from a report of them.
          * Whether somebody can be heard is answered by whether their audio is
          * arriving, which is the truth rather than a claim about it.
+         *
+         * Except when they cannot be reached, where the honest answer is that
+         * we do not know. No audio is arriving because no connection exists,
+         * and drawing "their microphone is off" would be inventing a fact about
+         * somebody we cannot hear from at all. The two marks share a slot and
+         * the stronger one takes it.
          */
-        el.querySelector('.quiet').hidden = audio
+        el.querySelector('.quiet').hidden = audio || Boolean(lost)
 
         /* Only your own picture is mirrored — see the stage's stylesheet. */
         el.classList.toggle('self', Boolean(self))
 
+        /*
+         * Somebody this browser could not reach.
+         *
+         * Drawn where the muted mark is drawn and in the same shape, because it
+         * is the same kind of fact: something about this person that the circle
+         * would otherwise leave you to infer from an absence. An empty circle
+         * already means "not sending a picture", and without this it also means
+         * "cannot be reached at all" — two very different things wearing one
+         * face, and the reason this failure has been mistaken for four separate
+         * bugs already.
+         */
+        el.classList.toggle('lost', Boolean(lost))
+        el.querySelector('.lost').hidden = !lost
+
         /* A list of who is in the party belongs on the panel, where there is
            room for it. This is what a pointer resting on a circle can find. */
-        el.title = name || ''
+        el.title = lost
+            ? `${name || ''} — cannot connect`.trim()
+            : name || ''
     }
 
     /**
@@ -325,10 +348,60 @@ import mesh from './mesh.js'
         }))
     }
 
+    /**
+     * Pretend nobody can be reached, for looking at what that does.
+     *
+     * `localStorage.smBreak = 1` and reload. The real thing needs two machines
+     * on networks that cannot see each other, which is not something anybody
+     * can arrange on a friendly afternoon — and a failure state that has never
+     * been looked at is a failure state nobody has designed.
+     *
+     * The same shelf as `smCrowd` and `smDebug`, and off unless somebody has
+     * deliberately put something there. It marks people rather than breaking
+     * connections, so what it exercises is everything downstream of the
+     * verdict: the circle, the words, and the message between the two.
+     */
+    const breaking = () => {
+        try {
+            return Boolean(window.localStorage?.getItem('smBreak'))
+        } catch {
+            /* Private browsing refuses to answer, which is the same as no. */
+            return false
+        }
+    }
+
+    /** The last set of names we told the panel about, so it is told only on change. */
+    let announced = ''
+
+    /**
+     * Say who cannot be reached, once per change.
+     *
+     * `draw` runs on every track event, every resize and every redraw; the
+     * panel needs to hear about this when it becomes true and when it stops
+     * being true, and not sixty times in between.
+     */
+    const announce = (unreachable) => {
+        const names = unreachable.map((one) => one.name).filter(Boolean)
+        const now = names.join(' ')
+
+        if (now === announced) {
+            return
+        }
+
+        announced = now
+        toAll('streetmesh.stage.unreachable', { names })
+    }
+
     function draw () {
         /* Pretend faces sit furthest from the badge, so the real ones stay
            where they would be without them. */
-        const others = [...crowd(), ...(party ? party.people() : [])]
+        const broken = breaking()
+        const joined = (party ? party.people() : [])
+            .map((one) => (broken ? { ...one, lost: true } : one))
+
+        const others = [...crowd(), ...joined]
+
+        announce(joined.filter((one) => one.lost))
         const mine = speaking || showing || Boolean(config.party)
         const count = others.length + (mine ? 1 : 0)
 

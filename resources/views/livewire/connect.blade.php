@@ -95,7 +95,39 @@ new #[Layout('layouts::door')] #[Title('Connect')] class extends Component
         next is a redirect to somebody else's server. Livewire would have to be
         told to do that, and a form already knows how.
     --}}
-    <form method="POST" action="{{ route('venue.connect.start') }}" class="flex flex-col gap-4">
+    {{--
+        The wait is real and worth showing.
+
+        What happens after this is not a page on this server: the venue goes and
+        finds the server named in the field, asks it what it supports and starts
+        a handshake with it — one that can take a moment, or considerably longer
+        if that server is slow, distant or asleep. A button that stays bright
+        and pressable through all of it invites a second press, and a second
+        press starts a second handshake.
+
+        Flux draws the waiting state itself, given the one thing it cannot know:
+        a submit button that carries `disabled` swaps its label for a spinner
+        and stops taking clicks. So there is nothing to draw here — only
+        something to say when.
+    --}}
+    <form
+        method="POST"
+        action="{{ route('venue.connect.start') }}"
+        class="flex flex-col gap-4"
+        x-data
+        x-on:submit="$refs.go.disabled = true"
+
+        {{--
+            And undone on the way back.
+
+            The next thing this form does is leave for another server, so Back
+            is a route people genuinely take — and a browser restoring this page
+            from its cache restores the DOM exactly as it left, spinner and all.
+            Without this, arriving back here shows a door that is already
+            busying itself with a handshake nobody started.
+        --}}
+        x-on:pageshow.window="$refs.go.disabled = false"
+    >
         @csrf
 
         {{--
@@ -145,7 +177,7 @@ new #[Layout('layouts::door')] #[Title('Connect')] class extends Component
             </flux:callout>
         @enderror
 
-        <flux:button type="submit" variant="primary" class="w-full">
+        <flux:button type="submit" variant="primary" class="w-full" x-ref="go">
             {{ __('Continue') }}
         </flux:button>
     </form>

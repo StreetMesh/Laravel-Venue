@@ -137,6 +137,33 @@ class VenueTest extends TestCase
         $this->assertSame(url('/experiences'), session(Visitors::INTENDED_KEY));
     }
 
+    /**
+     * Pressing Continue says so, and stops taking presses.
+     *
+     * What follows is not a page on this server — the venue goes off to find
+     * whichever server was named and starts a handshake with it, which takes as
+     * long as that server takes. A second press in the meantime starts a second
+     * handshake.
+     *
+     * Flux draws the waiting state given a submit button carrying `disabled`;
+     * what is asserted here is the part it cannot supply, which is the moment.
+     */
+    public function test_continue_shows_it_is_working_and_refuses_a_second_press(): void
+    {
+        $this->get('/connect')
+            ->assertOk()
+            ->assertSee('x-on:submit="$refs.go.disabled = true"', escape: false)
+            ->assertSee('x-ref="go"', escape: false)
+
+            /* Flux's own spinner, which is only in the markup because this is a
+               submit button that renders without `disabled`. */
+            ->assertSee('data-flux-loading-indicator', escape: false)
+
+            /* And undone by a browser restoring this page from its cache, which
+               is exactly what Back does after leaving for another server. */
+            ->assertSee('x-on:pageshow.window="$refs.go.disabled = false"', escape: false);
+    }
+
     public function test_the_door_asks_for_an_address_and_offers_no_account(): void
     {
         $this->get('/connect')

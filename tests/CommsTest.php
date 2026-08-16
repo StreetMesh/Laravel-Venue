@@ -210,6 +210,23 @@ class CommsTest extends TestCase
     }
 
     /**
+     * A circle can show that its person could not be reached.
+     *
+     * Including the `[hidden]` rule for it, which is not a detail. A `display`
+     * set anywhere else beats the attribute, and what that looks like is two
+     * marks contradicting each other on one circle — the same fault that once
+     * showed both chat icons at the same time.
+     */
+    public function test_a_face_can_show_that_nobody_could_reach_it(): void
+    {
+        $this->as($this->visitor(), 'stage')
+            ->assertOk()
+            ->assertSee('.face .lost {', escape: false)
+            ->assertSee('.face .lost[hidden]', escape: false)
+            ->assertSee('.face.lost .avatar', escape: false);
+    }
+
+    /**
      * Each surface says it may be framed by this origin.
      *
      * Nothing local objects to framing, so this was found only once it was

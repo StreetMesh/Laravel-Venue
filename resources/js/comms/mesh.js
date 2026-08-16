@@ -53,6 +53,23 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
      */
     const waiting = new Map()
 
+    /**
+     * Peers we have already asked to find another way round.
+     *
+     * `failed` has two quite different meanings and only one of them is worth
+     * telling anybody about. A connection that worked and then stopped —
+     * because a laptop slept, or a machine moved between networks — is often
+     * repaired by gathering addresses again, and the platform provides
+     * `restartIce` for exactly that. A connection that never had a route in the
+     * first place is not repaired by anything this browser can do alone.
+     *
+     * Trying once tells the two apart. What is left after a restart has been
+     * attempted and failed is the real thing: these two cannot reach each
+     * other, and somebody should be told rather than left watching an empty
+     * circle for as long as their patience holds.
+     */
+    const rerouted = new Set()
+
     let room = null
     let post = null
     let session = ''
@@ -97,6 +114,7 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
 
         connections.clear()
         waiting.clear()
+        rerouted.clear()
         changed()
     }
 
@@ -122,6 +140,13 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
                 session: id,
                 name: connections.get(id).name,
                 status: connections.get(id).status(),
+
+                /*
+                 * Somebody this browser cannot reach, having already tried the
+                 * one remedy there is. See `rerouted` — what makes this worth
+                 * reporting is that it is settled, not that it is going badly.
+                 */
+                lost: connections.get(id).status() === 'failed' && rerouted.has(id),
                 stream: held,
                 audio: held.getAudioTracks().length > 0,
                 video: held.getVideoTracks().length > 0,
@@ -150,6 +175,30 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
             onTrack: changed,
             onStatus: (state) => {
                 say(`${name} is ${state}`)
+
+                /*
+                 * `disconnected` is not this. The browser reports it for a
+                 * lull it usually recovers from by itself within seconds, and
+                 * anything drawn for it would appear on every brief hiccup —
+                 * which is worse than drawing nothing, because a warning that
+                 * cries wolf is one people learn to read past.
+                 */
+                if (state === 'failed' && !rerouted.has(id)) {
+                    rerouted.add(id)
+
+                    say(`${name}: no route — asking for another`)
+                    connection.reroute()
+                }
+
+                /*
+                 * And a connection that comes back is not carrying a grudge.
+                 * Without this, one recovered failure would leave somebody
+                 * marked unreachable for the life of the party.
+                 */
+                if (state === 'connected') {
+                    rerouted.delete(id)
+                }
+
                 changed()
             },
         })
@@ -194,6 +243,7 @@ export default function mesh({ ticketUrl, signalsUrl, csrf, tracks, onPeople, on
             if (!present.some((person) => person.session === id)) {
                 connections.get(id).close()
                 connections.delete(id)
+                rerouted.delete(id)
             }
         }
 

@@ -116,6 +116,42 @@
                 if (method === 'streetmesh.widget.context') {
                     context(params)
                 }
+
+                /*
+                 * Who the page could not reach.
+                 *
+                 * Kept on `window` as well as announced, because the component
+                 * that draws it is re-made by every poll and has to be able to
+                 * ask what is true now rather than wait to be told again.
+                 */
+                if (method === 'streetmesh.stage.unreachable') {
+                    window.smUnreachable = params?.names ?? []
+
+                    window.dispatchEvent(new CustomEvent('comms-unreachable', {
+                        detail: { names: window.smUnreachable },
+                    }))
+                }
+
+                /*
+                 * Something went wrong with the party itself — it would not let
+                 * us in, its room could not be reached, or this browser refused
+                 * a camera. Announced by the page since before any of this and,
+                 * until now, to nobody at all: nothing anywhere listened, so
+                 * every one of those failures was entirely silent.
+                 *
+                 * Deliberately not the strip at the top of this document. That
+                 * one means "cannot reach the server" and hides itself the
+                 * moment any request succeeds — which for a party problem would
+                 * be a message that flashed and vanished within five seconds
+                 * while the thing it described was still true.
+                 */
+                if (method === 'streetmesh.stage.trouble' && params?.why) {
+                    window.smPartyTrouble = params.why
+
+                    window.dispatchEvent(new CustomEvent('comms-party-trouble', {
+                        detail: { why: params.why },
+                    }))
+                }
             })
 
             /*
